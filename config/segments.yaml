@@ -1,0 +1,188 @@
+# Game Segment Definitions
+# ------------------------
+# Defines time-based segments for analyzing performance patterns
+# across different phases of the game
+
+# Regulation game structure
+game_structure:
+  periods: 3
+  period_length_minutes: 20
+  overtime_length_minutes: 5
+  total_regulation_minutes: 60
+
+# Segment definitions
+# Based on technical specification:
+# - Early game: Period 1 + first 10 min of Period 2
+# - Mid game: Minutes 10-20 of Period 2 + first 10 min of Period 3
+# - Late game: Final 10 minutes of regulation + overtime
+
+segments:
+  early_game:
+    name: "Early Game"
+    description: "Period 1 + first 10 minutes of Period 2"
+    time_ranges:
+      - period: 1
+        start_minute: 0
+        end_minute: 20
+      - period: 2
+        start_minute: 0
+        end_minute: 10
+    total_minutes: 30
+    characteristics:
+      - "Team establishing rhythm"
+      - "Fresh legs, high energy"
+      - "Testing opponent systems"
+      - "Initial matchup adjustments"
+
+  mid_game:
+    name: "Mid Game"
+    description: "Minutes 10-20 of Period 2 + first 10 minutes of Period 3"
+    time_ranges:
+      - period: 2
+        start_minute: 10
+        end_minute: 20
+      - period: 3
+        start_minute: 0
+        end_minute: 10
+    total_minutes: 20
+    characteristics:
+      - "Adjustments implemented"
+      - "Fatigue beginning to show"
+      - "Special teams impact"
+      - "Momentum shifts common"
+
+  late_game:
+    name: "Late Game"
+    description: "Final 10 minutes of regulation + overtime"
+    time_ranges:
+      - period: 3
+        start_minute: 10
+        end_minute: 20
+      - period: 4  # Overtime
+        start_minute: 0
+        end_minute: 5
+    total_minutes: 15
+    characteristics:
+      - "Score-state dependent play"
+      - "Clutch performance crucial"
+      - "Fatigue peaks"
+      - "Defensive/offensive desperation"
+      - "Empty net scenarios"
+
+# Additional granular segments for detailed analysis
+detailed_segments:
+  period_1:
+    name: "First Period"
+    period: 1
+    start_minute: 0
+    end_minute: 20
+
+  period_2_early:
+    name: "Second Period Early"
+    period: 2
+    start_minute: 0
+    end_minute: 10
+
+  period_2_late:
+    name: "Second Period Late"
+    period: 2
+    start_minute: 10
+    end_minute: 20
+
+  period_3_early:
+    name: "Third Period Early"
+    period: 3
+    start_minute: 0
+    end_minute: 10
+
+  period_3_late:
+    name: "Third Period Late"
+    period: 3
+    start_minute: 10
+    end_minute: 20
+
+  overtime:
+    name: "Overtime"
+    period: 4
+    start_minute: 0
+    end_minute: 5
+
+# Score state definitions (for context-aware analysis)
+score_states:
+  leading:
+    name: "Leading"
+    description: "Team is winning"
+    goal_differential: [1, 999]
+
+  tied:
+    name: "Tied"
+    description: "Score is tied"
+    goal_differential: [0, 0]
+
+  trailing:
+    name: "Trailing"
+    description: "Team is losing"
+    goal_differential: [-999, -1]
+
+  close_lead:
+    name: "Close Lead"
+    description: "Leading by 1 goal"
+    goal_differential: [1, 1]
+
+  close_deficit:
+    name: "Close Deficit"
+    description: "Trailing by 1 goal"
+    goal_differential: [-1, -1]
+
+  comfortable_lead:
+    name: "Comfortable Lead"
+    description: "Leading by 2+ goals"
+    goal_differential: [2, 999]
+
+  desperate:
+    name: "Desperate"
+    description: "Trailing by 2+ goals"
+    goal_differential: [-999, -2]
+
+# Clutch situation definitions
+clutch_situations:
+  tie_game_late:
+    name: "Tie Game Late"
+    description: "Tied score in final 5 minutes"
+    segment: "late_game"
+    score_state: "tied"
+    minutes_remaining_max: 5
+
+  one_goal_game_late:
+    name: "One Goal Game Late"
+    description: "Within 1 goal in final 5 minutes"
+    segment: "late_game"
+    score_states: ["close_lead", "close_deficit"]
+    minutes_remaining_max: 5
+
+  overtime:
+    name: "Overtime"
+    description: "Any overtime situation"
+    period: 4
+
+  empty_net:
+    name: "Empty Net"
+    description: "Empty net situation (requires event detection)"
+    event_type: "empty_net"
+
+# Analysis parameters
+analysis:
+  # Minimum events required for reliable segment analysis
+  min_events_per_segment: 50
+
+  # Sample size thresholds
+  sample_size:
+    minimum: 20
+    recommended: 100
+    high_confidence: 500
+
+  # Performance degradation detection
+  fatigue_detection:
+    comparison_segments: ["early_game", "late_game"]
+    significance_threshold: 0.05
+    min_degradation_pct: 10

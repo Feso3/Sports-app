@@ -1,0 +1,73 @@
+# NHL API Configuration
+# ----------------------
+# Configuration for NHL Stats API endpoints and rate limiting
+
+api:
+  # NHL Stats API base URL
+  base_url: "https://api-web.nhle.com"
+
+  # Legacy API (for historical data)
+  legacy_base_url: "https://statsapi.web.nhl.com/api/v1"
+
+  # Request timeout in seconds
+  timeout: 30
+
+  # Rate limiting configuration
+  rate_limit:
+    # Maximum requests per minute
+    requests_per_minute: 60
+    # Delay between requests (seconds)
+    request_delay: 0.5
+    # Retry configuration
+    max_retries: 3
+    retry_delay: 2.0
+    retry_backoff: 2.0  # Exponential backoff multiplier
+
+# API Endpoints
+endpoints:
+  # Current API endpoints
+  schedule: "/v1/schedule/{date}"
+  game_landing: "/v1/gamecenter/{game_id}/landing"
+  game_boxscore: "/v1/gamecenter/{game_id}/boxscore"
+  game_play_by_play: "/v1/gamecenter/{game_id}/play-by-play"
+  player_landing: "/v1/player/{player_id}/landing"
+  player_game_log: "/v1/player/{player_id}/game-log/{season}/{game_type}"
+  team_roster: "/v1/roster/{team_abbrev}/current"
+  team_schedule: "/v1/club-schedule/{team_abbrev}/week/{date}"
+  standings: "/v1/standings/{date}"
+
+  # Legacy endpoints (for historical data)
+  legacy:
+    game: "/game/{game_id}/feed/live"
+    schedule: "/schedule?startDate={start_date}&endDate={end_date}"
+    teams: "/teams"
+    team_roster: "/teams/{team_id}/roster"
+    player: "/people/{player_id}"
+    player_stats: "/people/{player_id}/stats"
+
+# Data collection settings
+collection:
+  # Number of seasons to collect for historical analysis
+  historical_seasons: 5
+
+  # Game types to collect
+  # 1 = Preseason, 2 = Regular Season, 3 = Playoffs, 4 = All-Star
+  game_types:
+    - 2  # Regular Season
+    - 3  # Playoffs
+
+  # Batch size for data collection
+  batch_size: 50
+
+  # Cache settings
+  cache:
+    enabled: true
+    ttl_hours: 24
+    directory: "data/cache"
+
+# Logging configuration
+logging:
+  level: "INFO"
+  format: "{time:YYYY-MM-DD HH:mm:ss} | {level} | {message}"
+  file: "logs/api.log"
+  rotation: "10 MB"

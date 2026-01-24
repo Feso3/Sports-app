@@ -1,0 +1,165 @@
+# Ice Zone Definitions
+# --------------------
+# NHL rink is 200ft x 85ft
+# Coordinates: Center ice is (0, 0)
+# X-axis: -100 to 100 (goal lines at approximately +/-89)
+# Y-axis: -42.5 to 42.5 (boards)
+
+# Zone configuration
+rink:
+  length: 200
+  width: 85
+  goal_line_x: 89
+  blue_line_x: 25
+  center_x: 0
+
+# Offensive/Defensive Zones
+# (Relative to attacking direction)
+zones:
+  # High danger areas (slot and crease)
+  slot:
+    name: "Slot"
+    description: "High-danger scoring area in front of the net"
+    x_min: 69
+    x_max: 89
+    y_min: -22
+    y_max: 22
+    danger_level: "high"
+    expected_shooting_pct: 0.15
+
+  inner_slot:
+    name: "Inner Slot"
+    description: "Prime scoring area very close to net"
+    x_min: 79
+    x_max: 89
+    y_min: -9
+    y_max: 9
+    danger_level: "extreme"
+    expected_shooting_pct: 0.25
+
+  crease:
+    name: "Crease"
+    description: "Goalie crease area"
+    x_min: 85
+    x_max: 89
+    y_min: -4
+    y_max: 4
+    danger_level: "extreme"
+    expected_shooting_pct: 0.35
+
+  # Medium danger areas
+  left_circle:
+    name: "Left Circle"
+    description: "Left faceoff circle area"
+    x_min: 54
+    x_max: 74
+    y_min: -32
+    y_max: -12
+    danger_level: "medium"
+    expected_shooting_pct: 0.08
+
+  right_circle:
+    name: "Right Circle"
+    description: "Right faceoff circle area"
+    x_min: 54
+    x_max: 74
+    y_min: 12
+    y_max: 32
+    danger_level: "medium"
+    expected_shooting_pct: 0.08
+
+  # Lower danger perimeter areas
+  left_wing:
+    name: "Left Wing"
+    description: "Left side below the goal line extended"
+    x_min: 69
+    x_max: 100
+    y_min: -42.5
+    y_max: -22
+    danger_level: "low"
+    expected_shooting_pct: 0.04
+
+  right_wing:
+    name: "Right Wing"
+    description: "Right side below the goal line extended"
+    x_min: 69
+    x_max: 100
+    y_min: 22
+    y_max: 42.5
+    danger_level: "low"
+    expected_shooting_pct: 0.04
+
+  # Point shots (blue line area)
+  left_point:
+    name: "Left Point"
+    description: "Left side point (blue line area)"
+    x_min: 25
+    x_max: 54
+    y_min: -42.5
+    y_max: -15
+    danger_level: "low"
+    expected_shooting_pct: 0.03
+
+  right_point:
+    name: "Right Point"
+    description: "Right side point (blue line area)"
+    x_min: 25
+    x_max: 54
+    y_min: 15
+    y_max: 42.5
+    danger_level: "low"
+    expected_shooting_pct: 0.03
+
+  high_slot:
+    name: "High Slot"
+    description: "Area between faceoff circles, outside slot"
+    x_min: 25
+    x_max: 69
+    y_min: -15
+    y_max: 15
+    danger_level: "medium-low"
+    expected_shooting_pct: 0.05
+
+  # Behind the net
+  behind_net:
+    name: "Behind Net"
+    description: "Area behind the goal line"
+    x_min: 89
+    x_max: 100
+    y_min: -22
+    y_max: 22
+    danger_level: "none"
+    expected_shooting_pct: 0.0
+
+# Zone groups for aggregation
+zone_groups:
+  high_danger:
+    zones: ["slot", "inner_slot", "crease"]
+    description: "All high danger scoring areas"
+
+  medium_danger:
+    zones: ["left_circle", "right_circle", "high_slot"]
+    description: "Medium danger areas with moderate scoring chance"
+
+  low_danger:
+    zones: ["left_wing", "right_wing", "left_point", "right_point"]
+    description: "Perimeter and point shot areas"
+
+  offensive_zone:
+    zones: ["slot", "inner_slot", "crease", "left_circle", "right_circle",
+            "left_wing", "right_wing", "high_slot"]
+    description: "All areas in the offensive zone"
+
+# Heat map configuration
+heat_map:
+  # Grid resolution for heat map generation
+  grid_resolution: 5  # 5-foot squares
+
+  # Smoothing parameters
+  smoothing_sigma: 2.0
+
+  # Color scale thresholds
+  color_scale:
+    min: 0.0
+    max: 1.0
+    bins: 10
