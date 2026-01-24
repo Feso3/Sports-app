@@ -1,0 +1,189 @@
+# Metric Weighting Parameters
+# ---------------------------
+# Configuration for weighting various metrics in analysis and simulation
+
+# Zone-based weighting for expected goals calculation
+zone_weights:
+  # Shot danger by zone (probability multipliers)
+  shot_danger:
+    inner_slot: 2.5
+    slot: 1.8
+    crease: 3.0
+    left_circle: 1.2
+    right_circle: 1.2
+    high_slot: 0.9
+    left_wing: 0.6
+    right_wing: 0.6
+    left_point: 0.4
+    right_point: 0.4
+    behind_net: 0.0
+
+  # Defensive importance by zone
+  defensive_priority:
+    inner_slot: 3.0
+    slot: 2.5
+    crease: 3.5
+    left_circle: 1.5
+    right_circle: 1.5
+    high_slot: 1.2
+    left_wing: 0.8
+    right_wing: 0.8
+    left_point: 0.6
+    right_point: 0.6
+    behind_net: 0.4
+
+# Shot type weights (relative danger)
+shot_type_weights:
+  wrist: 1.0
+  slap: 0.85
+  snap: 1.1
+  backhand: 0.9
+  deflection: 1.4
+  tip_in: 1.5
+  wrap_around: 0.7
+  bat: 0.6
+
+# Game segment weights for simulation
+segment_weights:
+  # Weight applied to performance metrics by segment
+  # Higher weight = more emphasis on that segment's performance
+  performance:
+    early_game: 1.0
+    mid_game: 1.1
+    late_game: 1.3  # Late game performance weighted higher
+
+  # Scoring probability adjustments by segment
+  scoring_probability:
+    early_game: 1.0
+    mid_game: 1.05
+    late_game: 1.15  # More goals typically scored late
+
+  # Fatigue factor by segment (multiplier on performance)
+  fatigue_factor:
+    early_game: 1.0
+    mid_game: 0.97
+    late_game: 0.93
+
+# Score state impact weights
+score_state_weights:
+  # Offensive aggression modifier
+  offensive_modifier:
+    comfortable_lead: 0.85  # Protect lead, less aggressive
+    close_lead: 0.95
+    tied: 1.0
+    close_deficit: 1.1
+    desperate: 1.25  # Pressing hard
+
+  # Defensive tightness modifier
+  defensive_modifier:
+    comfortable_lead: 1.15  # Tighter defense
+    close_lead: 1.1
+    tied: 1.0
+    close_deficit: 0.95
+    desperate: 0.85  # Taking risks
+
+# Player synergy calculation weights
+synergy_weights:
+  # Minimum games together for synergy calculation
+  min_games_together: 10
+
+  # Weight factors for synergy metrics
+  corsi_for_pct: 0.25
+  goals_for_pct: 0.30
+  expected_goals_for_pct: 0.25
+  high_danger_chances_for_pct: 0.20
+
+  # Synergy strength thresholds
+  thresholds:
+    strong_positive: 0.55  # GF% > 55%
+    moderate_positive: 0.52
+    neutral_low: 0.48
+    neutral_high: 0.52
+    moderate_negative: 0.48
+    strong_negative: 0.45  # GF% < 45%
+
+# Clutch performance weights
+clutch_weights:
+  # Situations and their importance weights
+  situation_importance:
+    tie_game_late: 1.5
+    one_goal_game_late: 1.4
+    overtime: 2.0
+    empty_net: 1.3
+    playoff: 1.5
+
+  # Minimum clutch situations for reliable metrics
+  min_situations: 20
+
+# Matchup calculation weights
+matchup_weights:
+  # Historical matchup weight vs general performance
+  historical_weight: 0.3
+  general_performance_weight: 0.7
+
+  # Recency weighting (more recent = higher weight)
+  recency_decay:
+    current_season: 1.0
+    previous_season: 0.7
+    two_seasons_ago: 0.4
+    three_plus_seasons: 0.2
+
+  # Minimum matchup events for historical weight
+  min_matchup_events: 5
+
+# Simulation parameters
+simulation:
+  # Monte Carlo settings
+  monte_carlo:
+    default_iterations: 10000
+    quick_iterations: 1000
+    high_precision_iterations: 50000
+
+  # Variance parameters
+  variance:
+    base_game_variance: 0.15
+    high_variance_threshold: 0.20
+    low_variance_threshold: 0.10
+
+  # Confidence scoring
+  confidence:
+    high_threshold: 0.85
+    medium_threshold: 0.65
+    low_threshold: 0.50
+
+  # Data quality requirements
+  data_quality:
+    min_games_per_player: 20
+    min_shots_for_heat_map: 50
+    min_matchup_games: 3
+
+# Special teams weights
+special_teams_weights:
+  power_play:
+    goal_probability_multiplier: 2.0
+    zone_weight_modifier: 1.2
+
+  penalty_kill:
+    goal_against_probability_multiplier: 0.5
+    defensive_weight_modifier: 1.3
+
+  # Frequency estimates per game
+  expected_per_game:
+    power_plays: 3.0
+    penalty_kills: 3.0
+
+# Goaltender weights
+goaltender_weights:
+  # Save percentage importance by zone
+  zone_save_importance:
+    inner_slot: 0.30
+    slot: 0.25
+    left_circle: 0.15
+    right_circle: 0.15
+    high_slot: 0.10
+    perimeter: 0.05
+
+  # Workload fatigue factor
+  workload_fatigue:
+    shots_threshold: 30
+    fatigue_per_extra_shot: 0.001
