@@ -164,7 +164,7 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 
 ## Implementation Phases
 
-### Phase 1: Data Foundation (Current)
+### Phase 1: Data Foundation (Complete)
 - [x] NHL API integration
 - [x] Shot data collection
 - [x] Player stats collection
@@ -172,11 +172,11 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 - [x] Zone-based aggregation system
 - [x] Segment analysis processing
 
-### Phase 2: Analytics Layer
-- [ ] Heat map generation
-- [ ] Zone-specific metrics
-- [ ] Matchup history tracking
-- [ ] Pattern detection
+### Phase 2: Analytics Layer (Complete)
+- [x] Heat map generation
+- [x] Zone-specific metrics (xG, Corsi, Fenwick)
+- [x] Matchup history tracking
+- [x] Pattern detection
 
 ### Phase 3: Synergy Detection
 - [ ] Player combination analysis
@@ -207,6 +207,18 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 
 - `ZoneAnalyzer`: Zone-based shot analysis and heat maps
 - `SegmentProcessor`: Game segment analysis
+- `HeatMapProcessor`: Spatial heat map generation with xG integration
+- `MatchupProcessor`: Player vs player and team vs team matchup tracking
+
+### Analytics
+
+- `MetricsCalculator`: Statistical calculations (xG, Corsi, Fenwick, PDO)
+- `PatternDetector`: Play style classification and pattern detection
+
+### Visualization
+
+- `HeatMapVisualizer`: Renders shot and performance heat maps
+- `ChartVisualizer`: Statistical charts and player comparisons
 
 ### Models
 
