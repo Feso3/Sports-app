@@ -13,6 +13,7 @@ from loguru import logger
 
 from src.analytics.synergy import SynergyAnalyzer, SynergyEvent
 from src.models.game import GameEvent, EventType
+from src.models.player import Player
 from src.models.team import LineConfiguration
 
 
@@ -70,6 +71,32 @@ class ChemistryTracker:
         for line in lines:
             line_scores[line.line_number] = self.analyzer.line_synergy(line.player_ids)
         return line_scores
+
+    def populate_player_synergies(self, players: Iterable[Player]) -> None:
+        """Populate each player's synergy map using current analyzer data."""
+        player_list = list(players)
+        player_ids = [player.player_id for player in player_list]
+        compatibility = self.analyzer.compatibility_matrix(player_ids)
+        for player in player_list:
+            player.synergies = {
+                other_id: score
+                for other_id, score in compatibility.get(player.player_id, {}).items()
+                if other_id != player.player_id
+            }
+
+    def populate_line_chemistry(self, lines: Iterable[LineConfiguration]) -> None:
+        """Populate chemistry scores on line configurations."""
+        for line in lines:
+            line.chemistry_score = self.analyzer.line_synergy(line.player_ids)
+
+    def apply_synergy_updates(
+        self,
+        players: Iterable[Player],
+        lines: Iterable[LineConfiguration],
+    ) -> None:
+        """Update player synergies and line chemistry deterministically."""
+        self.populate_player_synergies(players)
+        self.populate_line_chemistry(lines)
 
     def build_summary(self, players: Iterable[int], lines: Iterable[LineConfiguration]) -> SynergySummary:
         """Build a summary of synergy and chemistry metrics."""
