@@ -65,6 +65,47 @@ pip install -e ".[dev]"
 
 ## Quick Start
 
+### Interactive CLI (Recommended)
+
+The easiest way to run predictions is via the interactive CLI:
+
+```bash
+python -m cli.main
+```
+
+This provides a menu-driven interface to:
+- Select home and away teams
+- Choose simulation mode (quick/standard/high precision)
+- View win probabilities and key matchup factors
+- Manage data cache
+
+### Using the Orchestrator (Programmatic)
+
+For programmatic access, use the Orchestrator service:
+
+```python
+from src.service import Orchestrator, PredictionOptions
+
+# Run a prediction
+with Orchestrator() as orch:
+    # Quick prediction by team abbreviation
+    result = orch.predict_by_abbreviation("TOR", "BOS", quick=True)
+    print(result.report)
+
+    # Full prediction with custom options
+    options = PredictionOptions(iterations=50000)
+    result = orch.predict_game(
+        home_team_abbrev="EDM",
+        away_team_abbrev="VGK",
+        options=options,
+    )
+
+    # Access detailed results
+    print(f"Winner: {result.prediction.predicted_winner_name}")
+    print(f"Home Win: {result.prediction.win_probability.home_win_pct:.1%}")
+    print(f"Confidence: {result.prediction.win_confidence}")
+```
+
 ### Collecting Shot Data
 
 ```python
@@ -250,11 +291,11 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 - [x] Segment-specific weighting with clutch/stamina adjustments
 - [x] Win probability predictions with confidence scoring
 
-### Phase 4b: Interactive Local Interface
-- [ ] Service orchestrator (connects collectors → processors → simulation)
-- [ ] Data loader/cache manager (bootstrap team rosters and stats)
-- [ ] Interactive CLI (team selection, run simulations, view results)
-- [ ] Integration testing for end-to-end workflow
+### Phase 4b: Interactive Local Interface (Complete)
+- [x] Service orchestrator (connects collectors → processors → simulation)
+- [x] Data loader/cache manager (bootstrap team rosters and stats)
+- [x] Interactive CLI (team selection, run simulations, view results)
+- [x] Integration testing for end-to-end workflow (33 tests)
 
 ### Phase 5: Validation & Refinement
 - [ ] Historical backtesting
@@ -295,6 +336,28 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 - `AdjustmentCalculator`: Clutch, fatigue, and segment-specific modifiers
 - `PredictionGenerator`: Win probability and formatted prediction output
 - `SimulationResult`: Complete results with score distributions and confidence metrics
+
+### Service Layer
+
+- `Orchestrator`: Main entry point for running predictions
+  - `predict_game()`: Full prediction with team IDs or abbreviations
+  - `predict_by_abbreviation()`: Convenience method for abbreviation-based predictions
+  - `get_quick_prediction()`: Returns dict with key metrics
+  - `get_available_teams()`: List all NHL teams
+  - `refresh_data()`: Refresh cached team data
+- `DataLoader`: Data fetching and caching service
+  - `load_team()`: Load team with roster
+  - `load_player()`: Load player data
+  - `get_cache_status()`: Cache statistics
+- `PredictionOptions`: Configuration for prediction runs
+- `PredictionResult`: Complete prediction output with report
+
+### CLI
+
+- `cli.main`: Interactive command-line interface
+  - Team selection by abbreviation
+  - Multiple simulation modes
+  - Cache management
 
 ### Visualization
 
