@@ -95,8 +95,8 @@ class NHLApiClient:
         else:
             self.cache = None
 
-        # Set up HTTP client
-        self.client = httpx.Client(timeout=self.timeout)
+        # Set up HTTP client with redirect following enabled
+        self.client = httpx.Client(timeout=self.timeout, follow_redirects=True)
 
         logger.info("NHL API client initialized")
 
