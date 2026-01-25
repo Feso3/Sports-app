@@ -121,8 +121,8 @@ class TestStrengthDetermination:
         # 0505 = 5v5
         situation_code = "0505"
 
-        home_skaters = int(situation_code[0])
-        away_skaters = int(situation_code[2])
+        home_skaters = int(situation_code[:2])
+        away_skaters = int(situation_code[2:4])
 
         assert home_skaters == away_skaters
 
@@ -130,8 +130,8 @@ class TestStrengthDetermination:
         """Test power play detection for home team."""
         situation_code = "0504"  # 5v4 for home
 
-        home_skaters = int(situation_code[0])
-        away_skaters = int(situation_code[2])
+        home_skaters = int(situation_code[:2])
+        away_skaters = int(situation_code[2:4])
 
         # Home team has more skaters = power play
         assert home_skaters > away_skaters
@@ -140,8 +140,8 @@ class TestStrengthDetermination:
         """Test shorthanded detection for home team."""
         situation_code = "0405"  # 4v5 for home
 
-        home_skaters = int(situation_code[0])
-        away_skaters = int(situation_code[2])
+        home_skaters = int(situation_code[:2])
+        away_skaters = int(situation_code[2:4])
 
         # Home team has fewer skaters = shorthanded
         assert home_skaters < away_skaters

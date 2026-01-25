@@ -179,9 +179,9 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 - [x] Pattern detection
 
 ### Phase 3: Synergy Detection
-- [ ] Player combination analysis
-- [ ] Line chemistry tracking
-- [ ] Compatibility matrix
+- [x] Player combination analysis
+- [x] Line chemistry tracking
+- [x] Compatibility matrix
 
 ### Phase 4: Simulation Engine
 - [ ] Zone-based expected goals model
@@ -209,11 +209,13 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 - `SegmentProcessor`: Game segment analysis
 - `HeatMapProcessor`: Spatial heat map generation with xG integration
 - `MatchupProcessor`: Player vs player and team vs team matchup tracking
+- `ChemistryTracker`: Synergy ingestion and line chemistry tracking
 
 ### Analytics
 
 - `MetricsCalculator`: Statistical calculations (xG, Corsi, Fenwick, PDO)
 - `PatternDetector`: Play style classification and pattern detection
+- `SynergyAnalyzer`: Player combination synergy and compatibility matrices
 
 ### Visualization
 
