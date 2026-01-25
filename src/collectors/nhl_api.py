@@ -70,6 +70,7 @@ class NHLApiClient:
         """
         self.config = self._load_config(config_path)
         self.base_url = self.config["api"]["base_url"]
+        self.stats_base_url = self.config["api"]["stats_base_url"]
         self.legacy_base_url = self.config["api"]["legacy_base_url"]
         self.timeout = self.config["api"]["timeout"]
 
@@ -188,6 +189,11 @@ class NHLApiClient:
         """Build full URL from legacy endpoint template."""
         formatted_endpoint = endpoint.format(**kwargs)
         return f"{self.legacy_base_url}{formatted_endpoint}"
+
+    def _build_stats_url(self, endpoint: str, **kwargs: Any) -> str:
+        """Build full URL from stats API endpoint template."""
+        formatted_endpoint = endpoint.format(**kwargs)
+        return f"{self.stats_base_url}{formatted_endpoint}"
 
     # Schedule Methods
     def get_schedule(self, date: str | datetime) -> dict[str, Any]:
@@ -376,13 +382,13 @@ class NHLApiClient:
 
     def get_all_teams(self) -> dict[str, Any]:
         """
-        Get list of all NHL teams using legacy API.
+        Get list of all NHL teams using stats API.
 
         Returns:
             List of all teams with basic information
         """
-        endpoint = self.config["endpoints"]["legacy"]["teams"]
-        url = self._build_legacy_url(endpoint)
+        endpoint = self.config["endpoints"]["stats"]["teams"]
+        url = self._build_stats_url(endpoint)
         return self._make_request(url)
 
     # Standings Methods
