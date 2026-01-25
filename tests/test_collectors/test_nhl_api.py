@@ -44,6 +44,7 @@ class TestNHLApiClient:
         mock_config = """
 api:
   base_url: "https://api-web.nhle.com"
+  stats_base_url: "https://api.nhle.com/stats/rest/en"
   legacy_base_url: "https://statsapi.web.nhl.com/api/v1"
   timeout: 30
   rate_limit:
@@ -59,6 +60,10 @@ collection:
     directory: "data/cache"
 endpoints:
   schedule: "/v1/schedule/{date}"
+  stats:
+    teams: "/team"
+    schedule: "/game"
+    player: "/player"
   legacy:
     game: "/game/{game_id}/feed/live"
 """

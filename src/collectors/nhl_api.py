@@ -217,24 +217,26 @@ class NHLApiClient:
         self, start_date: str | datetime, end_date: str | datetime
     ) -> dict[str, Any]:
         """
-        Get schedule for a date range using legacy API.
+        Get schedule for a date range using stats API.
 
         Args:
             start_date: Start date in YYYY-MM-DD format or datetime
             end_date: End date in YYYY-MM-DD format or datetime
 
         Returns:
-            Schedule data for the date range
+            Schedule data for the date range with games in 'data' array
         """
         if isinstance(start_date, datetime):
             start_date = start_date.strftime("%Y-%m-%d")
         if isinstance(end_date, datetime):
             end_date = end_date.strftime("%Y-%m-%d")
 
-        endpoint = self.config["endpoints"]["legacy"]["schedule"]
-        url = self._build_legacy_url(
-            endpoint, start_date=start_date, end_date=end_date
-        )
+        # Use stats API with cayenneExp for date range filtering
+        endpoint = self.config["endpoints"]["stats"]["schedule"]
+        base_url = self._build_stats_url(endpoint)
+        # Format dates for the API query
+        cayenne_exp = f'gameDate>="{start_date}" and gameDate<="{end_date}"'
+        url = f"{base_url}?cayenneExp={cayenne_exp}"
         return self._make_request(url)
 
     # Game Methods
@@ -282,17 +284,28 @@ class NHLApiClient:
 
     def get_game_feed(self, game_id: int | str) -> dict[str, Any]:
         """
-        Get full game feed using legacy API.
+        Get full game feed using new API.
+
+        This combines landing page data with boxscore for comprehensive game info.
 
         Args:
             game_id: NHL game ID
 
         Returns:
-            Complete game feed with play-by-play and boxscore
+            Complete game data including scores, teams, and player stats
         """
-        endpoint = self.config["endpoints"]["legacy"]["game"]
-        url = self._build_legacy_url(endpoint, game_id=game_id)
-        return self._make_request(url)
+        # Use the new game landing endpoint which provides comprehensive game data
+        landing = self.get_game_landing(game_id)
+        boxscore = self.get_game_boxscore(game_id)
+
+        # Combine the data into a unified response
+        return {
+            "gameData": landing,
+            "liveData": {
+                "boxscore": boxscore,
+            },
+            "gamePk": game_id,
+        }
 
     # Player Methods
     def get_player_landing(self, player_id: int | str) -> dict[str, Any]:
@@ -331,17 +344,16 @@ class NHLApiClient:
 
     def get_player_info(self, player_id: int | str) -> dict[str, Any]:
         """
-        Get player information using legacy API.
+        Get player information using new API.
 
         Args:
             player_id: NHL player ID
 
         Returns:
-            Player biographical information
+            Player biographical and statistical information
         """
-        endpoint = self.config["endpoints"]["legacy"]["player"]
-        url = self._build_legacy_url(endpoint, player_id=player_id)
-        return self._make_request(url)
+        # Use the new player landing endpoint
+        return self.get_player_landing(player_id)
 
     # Team Methods
     def get_team_roster(self, team_abbrev: str) -> dict[str, Any]:
@@ -436,10 +448,11 @@ class NHLApiClient:
         schedule_data = self.get_schedule_range(start_date, end_date)
 
         games = []
-        for date_entry in schedule_data.get("dates", []):
-            for game in date_entry.get("games", []):
-                if game.get("gameType") in game_types:
-                    games.append(game)
+        # New stats API returns games in 'data' array
+        for game in schedule_data.get("data", []):
+            game_type = game.get("gameTypeId", game.get("gameType"))
+            if game_type in game_types:
+                games.append(game)
 
         logger.info(f"Found {len(games)} games for season {season}")
         return games
