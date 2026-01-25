@@ -6,7 +6,10 @@ api:
   # NHL Stats API base URL
   base_url: "https://api-web.nhle.com"
 
-  # Legacy API (for historical data)
+  # Stats API (for team listings and statistics)
+  stats_base_url: "https://api.nhle.com/stats/rest/en"
+
+  # Legacy API (deprecated - kept for reference only)
   legacy_base_url: "https://statsapi.web.nhl.com/api/v1"
 
   # Request timeout in seconds
@@ -36,7 +39,11 @@ endpoints:
   team_schedule: "/v1/club-schedule/{team_abbrev}/week/{date}"
   standings: "/v1/standings/{date}"
 
-  # Legacy endpoints (for historical data)
+  # Stats API endpoints (api.nhle.com)
+  stats:
+    teams: "/team"
+
+  # Legacy endpoints (deprecated - kept for reference only)
   legacy:
     game: "/game/{game_id}/feed/live"
     schedule: "/schedule?startDate={start_date}&endDate={end_date}"

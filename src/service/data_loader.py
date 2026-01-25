@@ -100,17 +100,20 @@ class DataLoader:
             return cached
 
         try:
-            # Fetch from API
+            # Fetch from API (new stats API format)
             data = self.api_client.get_all_teams()
             teams = []
 
-            for team_data in data.get("teams", []):
+            # Handle new API format: data is in "data" array with different field names
+            team_list = data.get("data", [])
+
+            for team_data in team_list:
                 teams.append({
                     "team_id": team_data["id"],
-                    "name": team_data["name"],
-                    "abbreviation": team_data.get("abbreviation", ""),
-                    "division": team_data.get("division", {}).get("name", ""),
-                    "conference": team_data.get("conference", {}).get("name", ""),
+                    "name": team_data.get("fullName", team_data.get("name", "")),
+                    "abbreviation": team_data.get("triCode", team_data.get("abbreviation", "")),
+                    "division": team_data.get("divisionName", ""),
+                    "conference": team_data.get("conferenceName", ""),
                 })
 
             # Cache the list
