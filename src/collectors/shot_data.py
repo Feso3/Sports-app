@@ -257,8 +257,8 @@ class ShotDataCollector:
 
         try:
             # Situation code format: HHAA where HH=home skaters, AA=away skaters
-            home_skaters = int(situation_code[0])
-            away_skaters = int(situation_code[2])
+            home_skaters = int(situation_code[:2])
+            away_skaters = int(situation_code[2:4])
 
             # Determine if shooting team is home or away
             home_team_id = play.get("homeTeamId")

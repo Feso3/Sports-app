@@ -6,6 +6,7 @@ This module contains analytics and metrics calculation functionality.
 Components:
     - MetricsCalculator: Statistical calculations (xG, Corsi, Fenwick)
     - PatternDetector: Play style and pattern detection
+    - SynergyAnalyzer: Player synergy and line chemistry scoring
 """
 
 from src.analytics.metrics import (
@@ -23,6 +24,7 @@ from src.analytics.patterns import (
     TemporalPattern,
     MismatchOpportunity,
 )
+from src.analytics.synergy import SynergyAnalyzer, SynergyEvent, PlayerSynergyStats
 
 __all__ = [
     # Metrics
@@ -38,4 +40,8 @@ __all__ = [
     "SpatialPattern",
     "TemporalPattern",
     "MismatchOpportunity",
+    # Synergy
+    "SynergyAnalyzer",
+    "SynergyEvent",
+    "PlayerSynergyStats",
 ]
