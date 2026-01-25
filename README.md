@@ -24,8 +24,10 @@ nhl-analytics/
 │   ├── processors/          # Data processing modules
 │   ├── models/              # Data models
 │   ├── analytics/           # Analytics calculations
+│   ├── service/             # Orchestration layer (Phase 4b)
 │   └── visualization/       # Visualization components
 ├── simulation/              # Game simulation engine
+├── cli/                     # Interactive command-line interface (Phase 4b)
 ├── config/                  # Configuration files
 ├── tests/                   # Test suite
 └── notebooks/               # Jupyter notebooks for exploration
@@ -247,6 +249,12 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 - [x] Monte Carlo simulation (10,000+ iterations)
 - [x] Segment-specific weighting with clutch/stamina adjustments
 - [x] Win probability predictions with confidence scoring
+
+### Phase 4b: Interactive Local Interface
+- [ ] Service orchestrator (connects collectors → processors → simulation)
+- [ ] Data loader/cache manager (bootstrap team rosters and stats)
+- [ ] Interactive CLI (team selection, run simulations, view results)
+- [ ] Integration testing for end-to-end workflow
 
 ### Phase 5: Validation & Refinement
 - [ ] Historical backtesting
