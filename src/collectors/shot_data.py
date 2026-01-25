@@ -138,7 +138,8 @@ class ShotDataCollector:
         all_shots = []
 
         for i, game in enumerate(games):
-            game_id = game.get("gamePk")
+            # Handle both old API (gamePk) and new API (id) field names
+            game_id = game.get("id", game.get("gamePk"))
             if game_id:
                 shots = self.collect_game_shots(game_id)
                 all_shots.extend(shots)

@@ -251,7 +251,8 @@ class TimestampDataCollector:
         all_events = []
 
         for i, game in enumerate(games):
-            game_id = game.get("gamePk")
+            # Handle both old API (gamePk) and new API (id) field names
+            game_id = game.get("id", game.get("gamePk"))
             if game_id:
                 events = self.collect_game_events(game_id)
                 all_events.extend(events)

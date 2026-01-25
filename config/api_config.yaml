@@ -42,6 +42,8 @@ endpoints:
   # Stats API endpoints (api.nhle.com)
   stats:
     teams: "/team"
+    schedule: "/game"
+    player: "/player"
 
   # Legacy endpoints (deprecated - kept for reference only)
   legacy:
