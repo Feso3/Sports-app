@@ -139,6 +139,62 @@ late_stats = processor.get_player_segment_stats(8478402, "late_game")
 fatigue = processor.calculate_fatigue_indicator(8478402)
 ```
 
+### Game Simulation
+
+```python
+from simulation import GameSimulationEngine, SimulationConfig, PredictionGenerator
+
+# Configure simulation
+config = SimulationConfig(
+    home_team_id=22,  # Edmonton Oilers
+    away_team_id=10,  # Toronto Maple Leafs
+    iterations=10000,
+    use_synergy_adjustments=True,
+    use_clutch_adjustments=True,
+    use_fatigue_adjustments=True,
+)
+
+# Run simulation
+engine = GameSimulationEngine()
+result = engine.simulate(config, home_team, away_team, players)
+
+# Generate prediction report
+generator = PredictionGenerator()
+prediction = generator.generate_prediction(
+    result,
+    home_team_name="Edmonton Oilers",
+    away_team_name="Toronto Maple Leafs",
+)
+
+# Print formatted report
+print(generator.generate_report(prediction))
+
+# Get JSON output for API integration
+json_output = generator.generate_json_output(prediction)
+```
+
+### Synergy Analysis
+
+```python
+from src.analytics.synergy import SynergyAnalyzer
+from src.analytics.clutch_analysis import ClutchAnalyzer, StaminaAnalyzer
+
+# Analyze player synergies
+synergy = SynergyAnalyzer()
+score = synergy.calculate_synergy(player_id_1, player_id_2)
+line_chemistry = synergy.line_synergy([player_1, player_2, player_3])
+
+# Clutch performance analysis
+clutch = ClutchAnalyzer()
+metrics = clutch.get_metrics(player_id)
+print(f"Clutch score: {metrics.clutch_score}")
+print(f"Classification: {metrics.clutch_level}")
+
+# Stamina/fatigue analysis
+stamina = StaminaAnalyzer()
+fatigue = stamina.calculate_fatigue_indicator(player_id)
+```
+
 ## Configuration
 
 Configuration files are located in the `config/` directory:
@@ -178,21 +234,24 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 - [x] Matchup history tracking
 - [x] Pattern detection
 
-### Phase 3: Synergy Detection
+### Phase 3: Synergy Detection (Complete)
 - [x] Player combination analysis
 - [x] Line chemistry tracking
 - [x] Compatibility matrix
+- [x] Clutch performer identification
+- [x] Stamina/fatigue analysis
 
-### Phase 4: Simulation Engine
-- [ ] Zone-based expected goals model
-- [ ] Line matchup logic
-- [ ] Monte Carlo simulation
-- [ ] Win probability predictions
+### Phase 4: Simulation Engine (Complete)
+- [x] Zone-based expected goals model
+- [x] Line matchup logic with synergy integration
+- [x] Monte Carlo simulation (10,000+ iterations)
+- [x] Segment-specific weighting with clutch/stamina adjustments
+- [x] Win probability predictions with confidence scoring
 
 ### Phase 5: Validation & Refinement
 - [ ] Historical backtesting
 - [ ] Parameter optimization
-- [ ] Confidence scoring
+- [ ] Confidence scoring refinement
 
 ## API Reference
 
@@ -216,6 +275,18 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 - `MetricsCalculator`: Statistical calculations (xG, Corsi, Fenwick, PDO)
 - `PatternDetector`: Play style classification and pattern detection
 - `SynergyAnalyzer`: Player combination synergy and compatibility matrices
+- `ClutchAnalyzer`: Clutch performance scoring and classification
+- `StaminaAnalyzer`: Fatigue indicators and late-game performance tracking
+
+### Simulation
+
+- `SimulationConfig`: Configuration for simulation runs (iterations, adjustments, weights)
+- `GameSimulationEngine`: Monte Carlo simulation engine with segment-based modeling
+- `ExpectedGoalsCalculator`: Zone-based expected goals for teams and lines
+- `MatchupAnalyzer`: Line-on-line matchup analysis with synergy integration
+- `AdjustmentCalculator`: Clutch, fatigue, and segment-specific modifiers
+- `PredictionGenerator`: Win probability and formatted prediction output
+- `SimulationResult`: Complete results with score distributions and confidence metrics
 
 ### Visualization
 
