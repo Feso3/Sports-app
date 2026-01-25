@@ -195,6 +195,9 @@ nhl-analytics/
 │   │   ├── patterns.py      # Pattern detection algorithms
 │   │   ├── predictions.py   # Outcome prediction logic
 │   │   └── clutch_analysis.py # Clutch/fatigue metrics
+│   ├── service/             # Phase 4b: Orchestration layer
+│   │   ├── orchestrator.py  # Workflow coordination
+│   │   └── data_loader.py   # Data bootstrap and caching
 │   └── visualization/
 │       ├── heat_maps.py     # Heat map rendering
 │       ├── charts.py        # Statistical visualizations
@@ -207,6 +210,9 @@ nhl-analytics/
 │   ├── matchup_logic.py     # Line vs line calculations
 │   ├── segment_weighting.py # Time-based performance adjustment
 │   └── variance.py          # Randomness and uncertainty
+│
+├── cli/                     # Phase 4b: Interactive interface
+│   └── main.py              # Menu-driven CLI entry point
 │
 ├── tests/
 │   ├── test_collectors/
@@ -262,6 +268,33 @@ Simulation Module Implementation Details:
 	∙	simulation/adjustments.py - Clutch/fatigue/momentum modifiers
 	∙	simulation/predictions.py - Win probability and prediction output
 
+Phase 4b: Interactive Local Interface
+Purpose: Provide a usable entry point to run simulations without writing Python code. Enables testing and iteration during development.
+Components:
+	∙	Service Orchestrator (src/service/orchestrator.py)
+		- Single entry point for "predict game" workflow
+		- Coordinates data collection, processing, and simulation
+		- Manages configuration and dependency injection
+		- Returns structured SimulationResult objects
+	∙	Data Loader (src/service/data_loader.py)
+		- Bootstrap and cache team rosters locally
+		- Store recent game stats (configurable depth)
+		- Refresh command for updating cached data
+		- Offline fallback to cached data
+	∙	Interactive CLI (cli/main.py)
+		- Menu-driven team selection
+		- Adjustable simulation parameters (optional)
+		- Run simulation and display results
+		- Show win probability, key factors, confidence
+		- Loop for multiple simulations
+	∙	Integration Tests
+		- End-to-end workflow validation
+		- Mock data for offline testing
+Design Principles:
+	∙	Zero changes to existing modules (pure addition)
+	∙	Thin wrapper around existing functionality
+	∙	Configuration-driven behavior
+	∙	Easy to swap for web interface later
 Phase 5: Validation & Refinement
 	∙	Backtest predictions against historical outcomes
 	∙	Refine weighting parameters
