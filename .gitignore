@@ -94,6 +94,12 @@ data/processed/**/*.parquet
 data/cache/*
 !data/cache/.gitkeep
 
+# SQLite database files
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
 # Keep directory structure
 !data/raw/games/.gitkeep
 !data/raw/players/.gitkeep
