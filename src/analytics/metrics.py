@@ -167,15 +167,18 @@ class MetricsCalculator:
     XG_BASE_RATE = 0.08
 
     # Shot type xG modifiers
+    # Note: Keys must match normalized names from shot_data.py SHOT_TYPE_MAP
     SHOT_TYPE_MODIFIERS = {
         "wrist": 1.0,
         "slap": 0.85,
         "snap": 1.1,
         "backhand": 0.9,
         "deflection": 1.4,
-        "tip-in": 1.5,
-        "wrap-around": 0.7,
+        "tip_in": 1.5,
+        "wrap_around": 0.7,
         "bat": 0.6,
+        "poke": 0.5,
+        "cradle": 0.8,
     }
 
     # Rebound and rush modifiers
