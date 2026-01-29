@@ -84,6 +84,73 @@ class Database:
             )
             return cur.fetchone() is not None
 
+    def migrate_shots_table(self) -> None:
+        """Migrate shots table to remove foreign key constraints.
+
+        SQLite doesn't support ALTER TABLE DROP CONSTRAINT, so we need to
+        recreate the table. This preserves existing data.
+        """
+        with self.cursor() as cur:
+            # Check if shots table exists
+            cur.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='shots'"
+            )
+            if not cur.fetchone():
+                return  # No shots table to migrate
+
+            # Check if there's data to preserve
+            cur.execute("SELECT COUNT(*) as count FROM shots")
+            has_data = cur.fetchone()["count"] > 0
+
+            if has_data:
+                # Rename old table
+                cur.execute("ALTER TABLE shots RENAME TO shots_old")
+            else:
+                # Just drop empty table
+                cur.execute("DROP TABLE shots")
+
+            # Create new table without foreign keys
+            cur.execute("""
+                CREATE TABLE shots (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    game_id INTEGER NOT NULL,
+                    event_id INTEGER NOT NULL,
+                    player_id INTEGER NOT NULL,
+                    team_abbrev TEXT,
+                    goalie_id INTEGER,
+                    period INTEGER,
+                    time_in_period TEXT,
+                    time_remaining TEXT,
+                    x_coord REAL,
+                    y_coord REAL,
+                    distance REAL,
+                    shot_type TEXT,
+                    is_goal INTEGER DEFAULT 0,
+                    strength TEXT,
+                    empty_net INTEGER DEFAULT 0,
+                    game_winning_goal INTEGER DEFAULT 0,
+                    assist1_player_id INTEGER,
+                    assist2_player_id INTEGER,
+                    season INTEGER,
+                    event_description TEXT,
+                    UNIQUE(game_id, event_id)
+                )
+            """)
+
+            if has_data:
+                # Copy data from old table
+                cur.execute("INSERT INTO shots SELECT * FROM shots_old")
+                # Drop old table
+                cur.execute("DROP TABLE shots_old")
+
+            # Recreate indexes
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_shots_player ON shots(player_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_shots_game ON shots(game_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_shots_season ON shots(season)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_shots_goalie ON shots(goalie_id)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_shots_player_season ON shots(player_id, season)")
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_shots_is_goal ON shots(is_goal)")
+
     # -------------------------------------------------------------------------
     # Player operations
     # -------------------------------------------------------------------------
@@ -714,7 +781,11 @@ def get_database(db_path: Optional[Path] = None) -> Database:
         _db_instance = Database(db_path)
         if not _db_instance.is_initialized():
             _db_instance.initialize()
-        elif not _db_instance.has_shots_table():
-            # Upgrade existing database to add shots table
-            _db_instance.upgrade_schema()
+        else:
+            if not _db_instance.has_shots_table():
+                # Upgrade existing database to add shots table
+                _db_instance.upgrade_schema()
+            else:
+                # Migrate shots table to remove foreign key constraints
+                _db_instance.migrate_shots_table()
     return _db_instance

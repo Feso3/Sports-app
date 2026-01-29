@@ -85,6 +85,8 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
 );
 
 -- Individual shot events (for detailed shot analysis)
+-- Note: No foreign key constraints because shots include all players in a game,
+-- not just those in our players table (opponents, historical players, etc.)
 CREATE TABLE IF NOT EXISTS shots (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     game_id INTEGER NOT NULL,
@@ -116,9 +118,6 @@ CREATE TABLE IF NOT EXISTS shots (
     season INTEGER,
     event_description TEXT,
 
-    FOREIGN KEY (player_id) REFERENCES players(player_id),
-    FOREIGN KEY (game_id) REFERENCES games(game_id),
-    FOREIGN KEY (goalie_id) REFERENCES players(player_id),
     UNIQUE(game_id, event_id)
 );
 
