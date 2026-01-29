@@ -14,8 +14,9 @@ from src.database.db import Database
 
 
 # All 32 NHL team abbreviations
+# Note: ARI (Arizona Coyotes) relocated to Utah after 2023-24 season and became UTA (Utah Hockey Club)
 NHL_TEAMS = [
-    "ANA", "ARI", "BOS", "BUF", "CGY", "CAR", "CHI", "COL",
+    "ANA", "BOS", "BUF", "CGY", "CAR", "CHI", "COL",
     "CBJ", "DAL", "DET", "EDM", "FLA", "LAK", "MIN", "MTL",
     "NSH", "NJD", "NYI", "NYR", "OTT", "PHI", "PIT", "SJS",
     "SEA", "STL", "TBL", "TOR", "UTA", "VAN", "VGK", "WSH", "WPG"
