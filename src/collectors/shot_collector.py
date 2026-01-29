@@ -97,6 +97,39 @@ class ShotDatabaseCollector:
         Returns:
             Number of shots collected
         """
+        # First, ensure the game record exists (foreign key requirement)
+        existing_game = self.db.get_game(game_id)
+        if not existing_game:
+            # Fetch game info and insert it
+            try:
+                game_data = self.api.get_game_landing(game_id)
+                game_record = {
+                    "game_id": game_id,
+                    "season": season,
+                    "game_type": game_data.get("gameType", 2),
+                    "game_date": game_data.get("gameDate", ""),
+                    "home_team_id": game_data.get("homeTeam", {}).get("id"),
+                    "home_team_abbrev": game_data.get("homeTeam", {}).get("abbrev"),
+                    "away_team_id": game_data.get("awayTeam", {}).get("id"),
+                    "away_team_abbrev": game_data.get("awayTeam", {}).get("abbrev"),
+                    "home_score": game_data.get("homeTeam", {}).get("score"),
+                    "away_score": game_data.get("awayTeam", {}).get("score"),
+                    "game_state": game_data.get("gameState", "FINAL"),
+                    "venue": game_data.get("venue", {}).get("default", ""),
+                }
+                self.db.insert_game(game_record)
+            except Exception as e:
+                logger.warning(f"Could not fetch game info for {game_id}: {e}")
+                # Create minimal game record to satisfy foreign key
+                game_record = {
+                    "game_id": game_id,
+                    "season": season,
+                    "game_type": 2,
+                    "game_date": "",
+                    "game_state": "UNKNOWN",
+                }
+                self.db.insert_game(game_record)
+
         shots = self.shot_collector.collect_game_shots(game_id)
 
         if not shots:
