@@ -84,6 +84,44 @@ CREATE TABLE IF NOT EXISTS player_game_stats (
     UNIQUE(player_id, game_id)
 );
 
+-- Individual shot events (for detailed shot analysis)
+CREATE TABLE IF NOT EXISTS shots (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    game_id INTEGER NOT NULL,
+    event_id INTEGER NOT NULL,
+    player_id INTEGER NOT NULL,           -- Shooter
+    team_abbrev TEXT,
+    goalie_id INTEGER,                    -- Goalie faced
+
+    -- Location and timing
+    period INTEGER,
+    time_in_period TEXT,                  -- MM:SS format
+    time_remaining TEXT,
+    x_coord REAL,                         -- Ice coordinates
+    y_coord REAL,
+    distance REAL,                        -- Distance from net
+
+    -- Shot details
+    shot_type TEXT,                       -- wrist, slap, snap, backhand, etc.
+    is_goal INTEGER DEFAULT 0,
+    strength TEXT,                        -- even, pp, sh
+    empty_net INTEGER DEFAULT 0,
+    game_winning_goal INTEGER DEFAULT 0,
+
+    -- Assists (for goals)
+    assist1_player_id INTEGER,
+    assist2_player_id INTEGER,
+
+    -- Metadata
+    season INTEGER,
+    event_description TEXT,
+
+    FOREIGN KEY (player_id) REFERENCES players(player_id),
+    FOREIGN KEY (game_id) REFERENCES games(game_id),
+    FOREIGN KEY (goalie_id) REFERENCES players(player_id),
+    UNIQUE(game_id, event_id)
+);
+
 -- Progress tracking for resumable collection
 CREATE TABLE IF NOT EXISTS collection_progress (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -109,3 +147,11 @@ CREATE INDEX IF NOT EXISTS idx_players_position ON players(position);
 CREATE INDEX IF NOT EXISTS idx_players_active ON players(is_active);
 CREATE INDEX IF NOT EXISTS idx_collection_progress_status ON collection_progress(status);
 CREATE INDEX IF NOT EXISTS idx_collection_progress_type ON collection_progress(collection_type);
+
+-- Shot indexes for player-centric queries
+CREATE INDEX IF NOT EXISTS idx_shots_player ON shots(player_id);
+CREATE INDEX IF NOT EXISTS idx_shots_game ON shots(game_id);
+CREATE INDEX IF NOT EXISTS idx_shots_season ON shots(season);
+CREATE INDEX IF NOT EXISTS idx_shots_goalie ON shots(goalie_id);
+CREATE INDEX IF NOT EXISTS idx_shots_player_season ON shots(player_id, season);
+CREATE INDEX IF NOT EXISTS idx_shots_is_goal ON shots(is_goal);

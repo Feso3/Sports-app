@@ -10,6 +10,7 @@ Collectors:
     - TimestampDataCollector: Collects event timing data for segment analysis
     - PlayerCollector: Collects all NHL players from team rosters
     - GameLogCollector: Collects game-by-game statistics for players
+    - ShotDatabaseCollector: Collects shots and stores in database
 """
 
 from src.collectors.nhl_api import NHLApiClient
@@ -18,6 +19,7 @@ from src.collectors.player_stats import PlayerStatsCollector
 from src.collectors.timestamp_data import TimestampDataCollector
 from src.collectors.player_collector import PlayerCollector
 from src.collectors.game_log_collector import GameLogCollector
+from src.collectors.shot_collector import ShotDatabaseCollector
 
 __all__ = [
     "NHLApiClient",
@@ -26,4 +28,5 @@ __all__ = [
     "TimestampDataCollector",
     "PlayerCollector",
     "GameLogCollector",
+    "ShotDatabaseCollector",
 ]

@@ -336,6 +336,208 @@ class Database:
             return cur.fetchone()["count"]
 
     # -------------------------------------------------------------------------
+    # Shot operations
+    # -------------------------------------------------------------------------
+
+    def insert_shot(self, shot: dict[str, Any]) -> None:
+        """Insert or update a shot record.
+
+        Args:
+            shot: Dictionary with shot data
+        """
+        with self.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO shots (
+                    game_id, event_id, player_id, team_abbrev, goalie_id,
+                    period, time_in_period, time_remaining, x_coord, y_coord,
+                    distance, shot_type, is_goal, strength, empty_net,
+                    game_winning_goal, assist1_player_id, assist2_player_id,
+                    season, event_description
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(game_id, event_id) DO UPDATE SET
+                    player_id = excluded.player_id,
+                    team_abbrev = excluded.team_abbrev,
+                    goalie_id = excluded.goalie_id,
+                    x_coord = excluded.x_coord,
+                    y_coord = excluded.y_coord,
+                    distance = excluded.distance,
+                    shot_type = excluded.shot_type,
+                    is_goal = excluded.is_goal,
+                    strength = excluded.strength,
+                    empty_net = excluded.empty_net,
+                    game_winning_goal = excluded.game_winning_goal,
+                    assist1_player_id = excluded.assist1_player_id,
+                    assist2_player_id = excluded.assist2_player_id
+                """,
+                (
+                    shot.get("game_id"),
+                    shot.get("event_id"),
+                    shot.get("player_id"),
+                    shot.get("team_abbrev"),
+                    shot.get("goalie_id"),
+                    shot.get("period"),
+                    shot.get("time_in_period"),
+                    shot.get("time_remaining"),
+                    shot.get("x_coord"),
+                    shot.get("y_coord"),
+                    shot.get("distance"),
+                    shot.get("shot_type"),
+                    1 if shot.get("is_goal") else 0,
+                    shot.get("strength"),
+                    1 if shot.get("empty_net") else 0,
+                    1 if shot.get("game_winning_goal") else 0,
+                    shot.get("assist1_player_id"),
+                    shot.get("assist2_player_id"),
+                    shot.get("season"),
+                    shot.get("event_description"),
+                ),
+            )
+
+    def insert_shots_batch(self, shots: list[dict[str, Any]]) -> int:
+        """Insert multiple shots in a single transaction.
+
+        Args:
+            shots: List of shot dictionaries
+
+        Returns:
+            Number of shots inserted
+        """
+        if not shots:
+            return 0
+
+        with self.cursor() as cur:
+            cur.executemany(
+                """
+                INSERT OR REPLACE INTO shots (
+                    game_id, event_id, player_id, team_abbrev, goalie_id,
+                    period, time_in_period, time_remaining, x_coord, y_coord,
+                    distance, shot_type, is_goal, strength, empty_net,
+                    game_winning_goal, assist1_player_id, assist2_player_id,
+                    season, event_description
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (
+                        s.get("game_id"),
+                        s.get("event_id"),
+                        s.get("player_id"),
+                        s.get("team_abbrev"),
+                        s.get("goalie_id"),
+                        s.get("period"),
+                        s.get("time_in_period"),
+                        s.get("time_remaining"),
+                        s.get("x_coord"),
+                        s.get("y_coord"),
+                        s.get("distance"),
+                        s.get("shot_type"),
+                        1 if s.get("is_goal") else 0,
+                        s.get("strength"),
+                        1 if s.get("empty_net") else 0,
+                        1 if s.get("game_winning_goal") else 0,
+                        s.get("assist1_player_id"),
+                        s.get("assist2_player_id"),
+                        s.get("season"),
+                        s.get("event_description"),
+                    )
+                    for s in shots
+                ],
+            )
+        return len(shots)
+
+    def get_player_shots(
+        self,
+        player_id: int,
+        season: Optional[int] = None,
+        goals_only: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Get all shots for a player.
+
+        Args:
+            player_id: NHL player ID
+            season: Optional season filter
+            goals_only: Only return goals
+
+        Returns:
+            List of shot records
+        """
+        with self.cursor() as cur:
+            conditions = ["player_id = ?"]
+            params: list[Any] = [player_id]
+
+            if season:
+                conditions.append("season = ?")
+                params.append(season)
+
+            if goals_only:
+                conditions.append("is_goal = 1")
+
+            where_clause = " AND ".join(conditions)
+            cur.execute(
+                f"""
+                SELECT * FROM shots
+                WHERE {where_clause}
+                ORDER BY game_id, event_id
+                """,
+                params,
+            )
+            return [dict(row) for row in cur.fetchall()]
+
+    def get_shot_count(
+        self,
+        player_id: Optional[int] = None,
+        season: Optional[int] = None,
+        goals_only: bool = False,
+    ) -> int:
+        """Get count of shots in database.
+
+        Args:
+            player_id: Optional player filter
+            season: Optional season filter
+            goals_only: Only count goals
+
+        Returns:
+            Shot count
+        """
+        with self.cursor() as cur:
+            conditions = []
+            params: list[Any] = []
+
+            if player_id:
+                conditions.append("player_id = ?")
+                params.append(player_id)
+
+            if season:
+                conditions.append("season = ?")
+                params.append(season)
+
+            if goals_only:
+                conditions.append("is_goal = 1")
+
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
+            cur.execute(
+                f"SELECT COUNT(*) as count FROM shots WHERE {where_clause}",
+                params,
+            )
+            return cur.fetchone()["count"]
+
+    def get_games_with_shots(self, season: int) -> set[int]:
+        """Get game IDs that already have shot data for a season.
+
+        Args:
+            season: Season to check
+
+        Returns:
+            Set of game IDs with shot data
+        """
+        with self.cursor() as cur:
+            cur.execute(
+                "SELECT DISTINCT game_id FROM shots WHERE season = ?",
+                (season,),
+            )
+            return {row["game_id"] for row in cur.fetchall()}
+
+    # -------------------------------------------------------------------------
     # Collection progress tracking
     # -------------------------------------------------------------------------
 
@@ -457,6 +659,12 @@ class Database:
             cur.execute("SELECT COUNT(*) as count FROM player_game_stats")
             total_stats = cur.fetchone()["count"]
 
+            cur.execute("SELECT COUNT(*) as count FROM shots")
+            total_shots = cur.fetchone()["count"]
+
+            cur.execute("SELECT COUNT(*) as count FROM shots WHERE is_goal = 1")
+            total_goals = cur.fetchone()["count"]
+
             cur.execute("SELECT DISTINCT season FROM games ORDER BY season DESC")
             seasons = [row["season"] for row in cur.fetchall()]
 
@@ -465,6 +673,8 @@ class Database:
                 "total_players": total_players,
                 "total_games": total_games,
                 "total_player_game_stats": total_stats,
+                "total_shots": total_shots,
+                "total_goals": total_goals,
                 "seasons": seasons,
             }
 

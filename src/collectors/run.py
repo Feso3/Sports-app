@@ -5,6 +5,8 @@ Usage:
     python -m src.collectors.run collect --full
     python -m src.collectors.run collect --players
     python -m src.collectors.run collect --game-logs --season 20242025
+    python -m src.collectors.run shots --season 20242025
+    python -m src.collectors.run shots --player 8478402 --season 20242025
     python -m src.collectors.run status
     python -m src.collectors.run status --season 20232024
 """
@@ -26,11 +28,18 @@ from src.collectors.game_log_collector import (
     collect_game_logs_with_progress,
     CURRENT_SEASON,
 )
+from src.collectors.shot_collector import (
+    ShotDatabaseCollector,
+    collect_season_shots_with_progress,
+    collect_player_shots_with_progress,
+    AVAILABLE_SEASONS,
+)
 
 
 # Global collectors for signal handling
 _player_collector: Optional[PlayerCollector] = None
 _game_log_collector: Optional[GameLogCollector] = None
+_shot_collector: Optional[ShotDatabaseCollector] = None
 
 
 def signal_handler(signum: int, frame) -> None:
@@ -42,6 +51,8 @@ def signal_handler(signum: int, frame) -> None:
         _player_collector.stop()
     if _game_log_collector:
         _game_log_collector.stop()
+    if _shot_collector:
+        _shot_collector.stop()
 
     # Reset handler to allow force quit
     signal.signal(signal.SIGINT, signal.SIG_DFL)
@@ -157,6 +168,68 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"  Game records: {game_status['total_game_records']:,}")
     if game_status["errors"]:
         print(f"  Errors: {len(game_status['errors'])}")
+    print()
+
+    # Shot collection status
+    shot_collector = ShotDatabaseCollector(db=db)
+    shot_status = shot_collector.get_collection_status(season)
+
+    print(f"Shot Collection (Season {season}):")
+    print(f"  Games with shots: {shot_status.get('games_with_shots', 0)}")
+    print(f"  Total shots: {shot_status['total_shots']:,}")
+    print(f"  Total goals: {shot_status['total_goals']:,}")
+
+    return 0
+
+
+def cmd_shots(args: argparse.Namespace) -> int:
+    """Collect shot data."""
+    global _shot_collector
+
+    db = get_database()
+
+    # Ensure database is initialized
+    if not db.is_initialized():
+        db.initialize()
+        print("Database initialized.")
+
+    season = args.season or CURRENT_SEASON
+    resume = not args.no_resume
+
+    if args.player:
+        # Single player mode (test mode)
+        player_id = args.player
+
+        # Look up player name
+        player = db.get_player(player_id)
+        if player:
+            print(f"Collecting shots for: {player['full_name']}")
+        else:
+            print(f"Collecting shots for player ID: {player_id}")
+            print("(Player not in database - will still collect shots)")
+
+        print()
+        _shot_collector = ShotDatabaseCollector(db=db)
+        collect_player_shots_with_progress(player_id, season, db=db)
+        _shot_collector = None
+
+    else:
+        # Full season mode
+        print("=" * 60)
+        print(f"Collecting Shots (Season {season})")
+        print("=" * 60)
+        print()
+
+        _shot_collector = ShotDatabaseCollector(db=db)
+        collect_season_shots_with_progress(season, db=db, resume=resume)
+        _shot_collector = None
+
+    # Show final stats
+    print()
+    stats = db.get_database_stats()
+    print(f"Database Summary:")
+    print(f"  Total shots: {stats['total_shots']:,}")
+    print(f"  Total goals: {stats['total_goals']:,}")
 
     return 0
 
@@ -189,6 +262,13 @@ def cmd_reset(args: argparse.Namespace) -> int:
                 (season,),
             )
             print(f"Game log collection progress reset for season {season}.")
+        elif args.shots:
+            season = args.season or CURRENT_SEASON
+            cur.execute(
+                "DELETE FROM collection_progress WHERE collection_type = 'shots' AND season = ?",
+                (season,),
+            )
+            print(f"Shot collection progress reset for season {season}.")
         else:
             cur.execute("DELETE FROM collection_progress")
             print("All collection progress reset.")
@@ -206,8 +286,10 @@ Examples:
   python -m src.collectors.run collect --full           # Collect everything
   python -m src.collectors.run collect --players        # Just collect players
   python -m src.collectors.run collect --game-logs      # Just collect game logs
+  python -m src.collectors.run shots --season 20242025  # Collect all shots for season
+  python -m src.collectors.run shots --player 8478402   # Test: one player's shots
   python -m src.collectors.run status                   # Show collection status
-  python -m src.collectors.run reset --game-logs        # Reset game log progress
+  python -m src.collectors.run reset --shots            # Reset shot collection progress
         """,
     )
 
@@ -236,6 +318,26 @@ Examples:
         help="Don't resume, start fresh (will update existing records)",
     )
 
+    # Shots command
+    shots_parser = subparsers.add_parser("shots", help="Collect shot data")
+    shots_parser.add_argument(
+        "--season",
+        type=int,
+        default=None,
+        help=f"Season to collect (default: {CURRENT_SEASON})",
+    )
+    shots_parser.add_argument(
+        "--player",
+        type=int,
+        default=None,
+        help="Player ID for single-player test mode (e.g., 8478402 for McDavid)",
+    )
+    shots_parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="Don't resume, recollect all games",
+    )
+
     # Status command
     status_parser = subparsers.add_parser("status", help="Show collection status")
     status_parser.add_argument(
@@ -254,10 +356,13 @@ Examples:
         "--game-logs", action="store_true", help="Reset game log collection only"
     )
     reset_parser.add_argument(
+        "--shots", action="store_true", help="Reset shot collection only"
+    )
+    reset_parser.add_argument(
         "--season",
         type=int,
         default=None,
-        help="Season to reset (for game logs)",
+        help="Season to reset (for game logs/shots)",
     )
 
     args = parser.parse_args()
@@ -278,6 +383,8 @@ Examples:
             print("ERROR: Specify --full, --players, or --game-logs")
             return 1
         return cmd_collect(args)
+    elif args.command == "shots":
+        return cmd_shots(args)
     elif args.command == "status":
         return cmd_status(args)
     elif args.command == "reset":
