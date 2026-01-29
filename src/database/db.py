@@ -59,11 +59,28 @@ class Database:
         with self.cursor() as cur:
             cur.executescript(schema_sql)
 
+    def upgrade_schema(self) -> None:
+        """Upgrade schema to add any missing tables.
+
+        Safe to run on existing databases - uses IF NOT EXISTS.
+        """
+        schema_sql = SCHEMA_PATH.read_text()
+        with self.cursor() as cur:
+            cur.executescript(schema_sql)
+
     def is_initialized(self) -> bool:
         """Check if database has been initialized with schema."""
         with self.cursor() as cur:
             cur.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='players'"
+            )
+            return cur.fetchone() is not None
+
+    def has_shots_table(self) -> bool:
+        """Check if shots table exists (for migrations)."""
+        with self.cursor() as cur:
+            cur.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='shots'"
             )
             return cur.fetchone() is not None
 
@@ -697,4 +714,7 @@ def get_database(db_path: Optional[Path] = None) -> Database:
         _db_instance = Database(db_path)
         if not _db_instance.is_initialized():
             _db_instance.initialize()
+        elif not _db_instance.has_shots_table():
+            # Upgrade existing database to add shots table
+            _db_instance.upgrade_schema()
     return _db_instance
