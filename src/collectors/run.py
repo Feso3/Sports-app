@@ -177,6 +177,7 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"Shot Collection (Season {season}):")
     print(f"  Games with shots: {shot_status.get('games_with_shots', 0)}")
     print(f"  Total shots: {shot_status['total_shots']:,}")
+    print(f"  Shots on goal: {shot_status['shots_on_goal']:,}")
     print(f"  Total goals: {shot_status['total_goals']:,}")
 
     return 0
@@ -229,6 +230,7 @@ def cmd_shots(args: argparse.Namespace) -> int:
     stats = db.get_database_stats()
     print(f"Database Summary:")
     print(f"  Total shots: {stats['total_shots']:,}")
+    print(f"  Shots on goal: {stats['shots_on_goal']:,}")
     print(f"  Total goals: {stats['total_goals']:,}")
 
     return 0

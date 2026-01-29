@@ -290,23 +290,23 @@ class ShotDatabaseCollector:
             Status summary
         """
         if season:
-            total_shots = self.db.get_shot_count(season=season)
-            total_goals = self.db.get_shot_count(season=season, goals_only=True)
+            shot_counts = self.db.get_shot_counts(season=season)
             games_with_shots = len(self.db.get_games_with_shots(season))
 
             return {
                 "season": season,
                 "games_with_shots": games_with_shots,
-                "total_shots": total_shots,
-                "total_goals": total_goals,
+                "total_shots": shot_counts["total_attempts"],
+                "shots_on_goal": shot_counts["shots_on_goal"],
+                "total_goals": shot_counts["goals"],
             }
         else:
-            total_shots = self.db.get_shot_count()
-            total_goals = self.db.get_shot_count(goals_only=True)
+            shot_counts = self.db.get_shot_counts()
 
             return {
-                "total_shots": total_shots,
-                "total_goals": total_goals,
+                "total_shots": shot_counts["total_attempts"],
+                "shots_on_goal": shot_counts["shots_on_goal"],
+                "total_goals": shot_counts["goals"],
             }
 
 
@@ -364,6 +364,7 @@ def collect_season_shots_with_progress(
     print(f"Collection complete!")
     print(f"  Games processed: {games}")
     print(f"  Total shots: {status['total_shots']:,}")
+    print(f"  Shots on goal: {status['shots_on_goal']:,}")
     print(f"  Total goals: {status['total_goals']:,}")
 
     return games, shots
@@ -412,11 +413,12 @@ def collect_player_shots_with_progress(
     print()
 
     # Get player-specific stats
-    goals = db.get_shot_count(player_id=player_id, season=season, goals_only=True)
+    shot_counts = db.get_shot_counts(player_id=player_id, season=season)
 
     print(f"Collection complete for {player_name}!")
-    print(f"  Total shots: {total_shots}")
-    print(f"  Goals: {goals}")
+    print(f"  Total shots: {shot_counts['total_attempts']}")
+    print(f"  Shots on goal: {shot_counts['shots_on_goal']}")
+    print(f"  Goals: {shot_counts['goals']}")
 
     # Show shot breakdown
     shots = db.get_player_shots(player_id, season=season)

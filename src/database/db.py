@@ -605,6 +605,54 @@ class Database:
             )
             return cur.fetchone()["count"]
 
+    def get_shot_counts(
+        self,
+        player_id: Optional[int] = None,
+        season: Optional[int] = None,
+    ) -> dict[str, int]:
+        """Get shot attempt and shots-on-goal counts.
+
+        Args:
+            player_id: Optional player filter
+            season: Optional season filter
+
+        Returns:
+            Dict with totals for attempts, shots_on_goal, and goals
+        """
+        with self.cursor() as cur:
+            conditions = []
+            params: list[Any] = []
+
+            if player_id:
+                conditions.append("player_id = ?")
+                params.append(player_id)
+
+            if season:
+                conditions.append("season = ?")
+                params.append(season)
+
+            where_clause = " AND ".join(conditions) if conditions else "1=1"
+            cur.execute(
+                f"""
+                SELECT
+                    COUNT(*) as total_attempts,
+                    SUM(CASE
+                        WHEN LOWER(event_description) IN ('shot-on-goal', 'goal') THEN 1
+                        ELSE 0
+                    END) as shots_on_goal,
+                    SUM(CASE WHEN is_goal = 1 THEN 1 ELSE 0 END) as goals
+                FROM shots
+                WHERE {where_clause}
+                """,
+                params,
+            )
+            row = cur.fetchone()
+            return {
+                "total_attempts": row["total_attempts"] or 0,
+                "shots_on_goal": row["shots_on_goal"] or 0,
+                "goals": row["goals"] or 0,
+            }
+
     def get_games_with_shots(self, season: int) -> set[int]:
         """Get game IDs that already have shot data for a season.
 
@@ -743,11 +791,7 @@ class Database:
             cur.execute("SELECT COUNT(*) as count FROM player_game_stats")
             total_stats = cur.fetchone()["count"]
 
-            cur.execute("SELECT COUNT(*) as count FROM shots")
-            total_shots = cur.fetchone()["count"]
-
-            cur.execute("SELECT COUNT(*) as count FROM shots WHERE is_goal = 1")
-            total_goals = cur.fetchone()["count"]
+            shot_counts = self.get_shot_counts()
 
             cur.execute("SELECT DISTINCT season FROM games ORDER BY season DESC")
             seasons = [row["season"] for row in cur.fetchall()]
@@ -757,8 +801,9 @@ class Database:
                 "total_players": total_players,
                 "total_games": total_games,
                 "total_player_game_stats": total_stats,
-                "total_shots": total_shots,
-                "total_goals": total_goals,
+                "total_shots": shot_counts["total_attempts"],
+                "shots_on_goal": shot_counts["shots_on_goal"],
+                "total_goals": shot_counts["goals"],
                 "seasons": seasons,
             }
 
