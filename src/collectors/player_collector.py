@@ -13,9 +13,9 @@ from src.database import get_database
 from src.database.db import Database
 
 
-# All 32 NHL team abbreviations
+# All 32 NHL team abbreviations (ARI relocated to UTA for 2024-25)
 NHL_TEAMS = [
-    "ANA", "ARI", "BOS", "BUF", "CGY", "CAR", "CHI", "COL",
+    "ANA", "BOS", "BUF", "CGY", "CAR", "CHI", "COL",
     "CBJ", "DAL", "DET", "EDM", "FLA", "LAK", "MIN", "MTL",
     "NSH", "NJD", "NYI", "NYR", "OTT", "PHI", "PIT", "SJS",
     "SEA", "STL", "TBL", "TOR", "UTA", "VAN", "VGK", "WSH", "WPG"
@@ -318,7 +318,7 @@ def collect_players_with_progress(
     print(f"  Players: {status['total_players']}")
 
     if status["errors"]:
-        print(f"  Errors: {len(status['errors'])}")
+        print(f"  Errors: {status['errors']}")
         for team, error in status["error_teams"]:
             print(f"    - {team}: {error[:50]}")
 
