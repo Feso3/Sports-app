@@ -6,7 +6,7 @@ Handles authentication, rate limiting, caching, and request management.
 """
 
 import time
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -424,8 +424,40 @@ class NHLApiClient:
         return self._make_request(url)
 
     # Utility Methods
+    def _is_game_played(self, game: dict[str, Any], today: date) -> bool:
+        """Determine if a scheduled game has been played."""
+        game_state = str(game.get("gameState") or "").upper()
+        if game_state:
+            if game_state.startswith("FINAL") or game_state == "OFF":
+                return True
+            if game_state in {"FUT", "PRE", "LIVE", "CRIT", "SCHED"}:
+                return False
+
+        game_state_id = game.get("gameStateId")
+        if isinstance(game_state_id, int):
+            if game_state_id in {7, 8}:
+                return True
+            if game_state_id in {1, 2, 3, 4, 5, 6}:
+                return False
+
+        game_date = game.get("gameDate")
+        if not game_date:
+            return True
+
+        try:
+            if "T" in game_date:
+                game_date = game_date.split("T", maxsplit=1)[0]
+            game_date_parsed = datetime.fromisoformat(game_date).date()
+        except ValueError:
+            return True
+
+        return game_date_parsed <= today
+
     def get_season_games(
-        self, season: str, game_types: list[int] | None = None
+        self,
+        season: str,
+        game_types: list[int] | None = None,
+        include_future: bool = False,
     ) -> list[dict[str, Any]]:
         """
         Get all games for a season.
@@ -448,11 +480,13 @@ class NHLApiClient:
         schedule_data = self.get_schedule_range(start_date, end_date)
 
         games = []
+        today = datetime.now().date()
         # New stats API returns games in 'data' array
         for game in schedule_data.get("data", []):
             game_type = game.get("gameTypeId", game.get("gameType"))
             if game_type in game_types:
-                games.append(game)
+                if include_future or self._is_game_played(game, today):
+                    games.append(game)
 
         logger.info(f"Found {len(games)} games for season {season}")
         return games
