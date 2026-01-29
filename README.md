@@ -14,13 +14,23 @@ This platform provides tools for:
 ## Project Structure
 
 ```
-nhl-analytics/
+Sports-app/
 ├── data/                    # Data storage
-│   ├── raw/                 # Raw API data
+│   ├── raw/                 # Raw API data (JSON)
 │   ├── processed/           # Processed analytics data
-│   └── cache/               # API response cache
+│   ├── cache/               # API response cache
+│   └── nhl_players.db       # SQLite database (players, games, shots)
 ├── src/                     # Source code
 │   ├── collectors/          # Data collection modules
+│   │   ├── nhl_api.py       # Core NHL API client
+│   │   ├── player_collector.py    # Collect all players from rosters
+│   │   ├── game_log_collector.py  # Collect per-game stats
+│   │   ├── shot_collector.py      # Collect shot data to database
+│   │   └── run.py           # CLI for data collection
+│   ├── database/            # Database layer
+│   │   ├── schema.sql       # SQLite schema
+│   │   ├── db.py            # Database connection and operations
+│   │   └── queries.py       # Common query functions
 │   ├── processors/          # Data processing modules
 │   ├── models/              # Data models
 │   ├── analytics/           # Analytics calculations
@@ -106,7 +116,91 @@ with Orchestrator() as orch:
     print(f"Confidence: {result.prediction.win_confidence}")
 ```
 
-### Collecting Shot Data
+## Data Collection System
+
+The platform includes a comprehensive data collection system that stores player data, game logs, and shot data in a local SQLite database.
+
+### Database Location
+
+Data is stored in `data/nhl_players.db` (SQLite).
+
+### Quick Start - Full Collection
+
+```bash
+# Collect everything: players + game logs for current season
+python -m src.collectors.run collect --full
+
+# Check collection status
+python -m src.collectors.run status
+```
+
+### Collection Commands
+
+```bash
+# Players only (all 32 team rosters)
+python -m src.collectors.run collect --players
+
+# Game logs for a specific season
+python -m src.collectors.run collect --game-logs --season 20242025
+
+# Shot data for current season
+python -m src.collectors.run shots --season 20242025
+
+# Test shot collection with a single player
+python -m src.collectors.run shots --player 8478402 --season 20242025
+
+# Historical shot data (2015-present)
+python -m src.collectors.run shots --season 20152016
+
+# Reset collection progress (to re-collect)
+python -m src.collectors.run reset --players
+python -m src.collectors.run reset --game-logs --season 20242025
+python -m src.collectors.run reset --shots --season 20242025
+```
+
+### Resumable Collection
+
+All collection is resumable. If interrupted (Ctrl+C, network error, etc.), just run the same command again - it picks up where it left off.
+
+### Historical Data
+
+Shot data is available from 2015-16 season onwards. Team abbreviations are handled automatically:
+- **ARI** (Arizona Coyotes): 2014-2024
+- **UTA** (Utah Hockey Club): 2024+
+
+### Database Schema
+
+| Table | Description |
+|-------|-------------|
+| `players` | All NHL players with bio, position, team |
+| `games` | Game records with scores, teams, dates |
+| `player_game_stats` | Per-game stats for each player |
+| `shots` | Individual shot events with coordinates, type, result |
+| `collection_progress` | Tracks collection status for resume support |
+
+### Programmatic Access
+
+```python
+from src.database import get_database
+from src.database.queries import get_player_game_log, get_top_scorers
+
+db = get_database()
+
+# Get database stats
+stats = db.get_database_stats()
+print(f"Players: {stats['total_players']}, Shots: {stats['total_shots']}")
+
+# Query player's game log
+games = get_player_game_log(player_id=8478402, season=20242025)
+
+# Get top scorers
+scorers = get_top_scorers(season=20242025, limit=10)
+
+# Get player's shots
+shots = db.get_player_shots(player_id=8478402, season=20242025)
+```
+
+### Legacy Collectors (JSON-based)
 
 ```python
 from src.collectors import NHLApiClient, ShotDataCollector
@@ -119,8 +213,6 @@ with ShotDataCollector() as collector:
     # Save to file
     collector.save_shots(shots, "data/raw/shots/game_2023020001.json")
 ```
-
-### Collecting Player Data
 
 ```python
 from src.collectors import PlayerStatsCollector
@@ -307,9 +399,23 @@ pytest --cov=src --cov=simulation --cov-report=term-missing
 ### Collectors
 
 - `NHLApiClient`: Core API client for NHL Stats API
-- `ShotDataCollector`: Shot location and outcome collection
+- `ShotDataCollector`: Shot location and outcome collection (JSON-based)
 - `PlayerStatsCollector`: Player statistics collection
 - `TimestampDataCollector`: Event timing collection
+- `PlayerCollector`: Collects all NHL players from team rosters (database-backed)
+- `GameLogCollector`: Collects game-by-game statistics for players (database-backed)
+- `ShotDatabaseCollector`: Collects shots and stores in database with player links
+
+### Database
+
+- `Database`: SQLite connection manager with CRUD operations
+- `get_database()`: Get singleton database instance
+- Query functions in `src/database/queries.py`:
+  - `get_player_game_log()`: Player's game-by-game stats
+  - `get_top_scorers()`: Top scorers for a season
+  - `get_player_by_name()`: Search players by name
+  - `get_team_roster_stats()`: All players on a team with stats
+  - `get_player_vs_opponent()`: Player's stats against specific team
 
 ### Processors
 

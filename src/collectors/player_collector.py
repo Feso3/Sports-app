@@ -13,9 +13,11 @@ from src.database import get_database
 from src.database.db import Database
 
 
-# All 32 NHL team abbreviations (ARI relocated to UTA for 2024-25)
+# All NHL team abbreviations (includes both ARI and UTA for historical support)
+# ARI = Arizona Coyotes (2014-2024), UTA = Utah Hockey Club (2024+)
+# API will return 404 for non-existent teams in a given season, which is handled gracefully
 NHL_TEAMS = [
-    "ANA", "BOS", "BUF", "CGY", "CAR", "CHI", "COL",
+    "ANA", "ARI", "BOS", "BUF", "CGY", "CAR", "CHI", "COL",
     "CBJ", "DAL", "DET", "EDM", "FLA", "LAK", "MIN", "MTL",
     "NSH", "NJD", "NYI", "NYR", "OTT", "PHI", "PIT", "SJS",
     "SEA", "STL", "TBL", "TOR", "UTA", "VAN", "VGK", "WSH", "WPG"
