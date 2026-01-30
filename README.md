@@ -1,15 +1,14 @@
 # NHL Analytics Platform
 
-A comprehensive analytics platform for NHL player-level analysis, heat map generation, synergy detection, and game simulation.
+A focused analytics platform for NHL player-level insights, matchup evaluation, and game simulation.
 
 ## Overview
 
-This platform provides tools for:
-- **Player-Level Analytics**: Individual offensive/defensive heat maps, shot analysis, zone-specific metrics
-- **Game Segment Analysis**: Performance tracking across early/mid/late game periods
-- **Matchup Analysis**: Player vs player and team vs team historical performance
-- **Synergy Detection**: Identify player combinations that work well together
-- **Game Simulation**: Monte Carlo simulation for outcome prediction
+Key capabilities include:
+- Player-level heat maps and zone metrics
+- Matchup and synergy analysis
+- Segment-aware simulation and prediction
+- Local CLI for running predictions
 
 ## Project Structure
 
@@ -21,24 +20,16 @@ Sports-app/
 │   ├── cache/               # API response cache
 ├── src/                     # Source code
 │   ├── collectors/          # Data collection modules
-│   │   ├── nhl_api.py       # Core NHL API client
-│   │   ├── player_collector.py    # Collect all players from rosters
-│   │   ├── game_log_collector.py  # Collect per-game stats
-│   │   ├── shot_collector.py      # Collect shot data to database
-│   │   └── run.py           # CLI for data collection
 │   ├── database/            # Database layer
-│   │   ├── schema.sql       # SQLite schema
-│   │   ├── db.py            # Database connection and operations
-│   │   └── queries.py       # Common query functions
 │   ├── processors/          # Data processing modules
 │   ├── models/              # Data models
 │   ├── analytics/           # Analytics calculations
-│   ├── service/             # Orchestration layer (Phase 4b)
+│   ├── service/             # Orchestration layer
 │   └── visualization/       # Visualization components
 ├── simulation/              # Game simulation engine
-├── cli/                     # Interactive command-line interface (Phase 4b)
+├── cli/                     # Interactive command-line interface
 ├── config/                  # Configuration files
-├── docs/                    # Product documentation and phase context
+├── docs/                    # Historical context
 ├── tests/                   # Test suite
 └── requirements.txt         # Python dependencies
 ```
@@ -46,11 +37,7 @@ Sports-app/
 ## Documentation
 
 - [Technical Specification](Technical%20Specification.md)
-- [Implementation History (Draft)](docs/implementation-history.md)
-- [Development History (Draft)](docs/development-history.md)
-- [Product Roadmap](docs/roadmap.md)
-- [Data Collection Specification](docs/data-collection-spec.md)
-- [Phase 4b Context Capsule](docs/phase-4b-context.md)
+- [Project History](docs/project-history.md)
 
 ## Installation
 
@@ -86,263 +73,48 @@ pip install -e ".[dev]"
 
 ### Interactive CLI (Recommended)
 
-The easiest way to run predictions is via the interactive CLI:
-
 ```bash
 python -m cli.main
 ```
 
-This provides a menu-driven interface to:
-- Select home and away teams
-- Choose simulation mode (quick/standard/high precision)
-- View win probabilities and key matchup factors
-- Manage data cache
+Use the menu to select teams, run predictions, and view results.
 
-### Using the Orchestrator (Programmatic)
-
-For programmatic access, use the Orchestrator service:
+### Programmatic Usage
 
 ```python
 from src.service import Orchestrator, PredictionOptions
 
-# Run a prediction
 with Orchestrator() as orch:
-    # Quick prediction by team abbreviation
     result = orch.predict_by_abbreviation("TOR", "BOS", quick=True)
     print(result.report)
 
-    # Full prediction with custom options
     options = PredictionOptions(iterations=50000)
-    result = orch.predict_game(
+    detailed = orch.predict_game(
         home_team_abbrev="EDM",
         away_team_abbrev="VGK",
         options=options,
     )
-
-    # Access detailed results
-    print(f"Winner: {result.prediction.predicted_winner_name}")
-    print(f"Home Win: {result.prediction.win_probability.home_win_pct:.1%}")
-    print(f"Confidence: {result.prediction.win_confidence}")
+    print(detailed.report)
 ```
 
-## Data Collection System
+## Data Collection
 
-The platform includes a comprehensive data collection system that stores player data, game logs, and shot data in a local SQLite database.
-
-### Database Location
-
-Data is stored in `data/nhl_players.db` (SQLite).
-
-### Quick Start - Full Collection
+Data is stored in `data/nhl_players.db` (SQLite). The collectors are resumable, so rerun the same command after interruptions.
 
 ```bash
-# Collect everything: players + game logs for current season
+# Collect players + game logs for the current season
 python -m src.collectors.run collect --full
 
 # Check collection status
 python -m src.collectors.run status
-```
 
-### Collection Commands
-
-```bash
-# Players only (all 32 team rosters)
-python -m src.collectors.run collect --players
-
-# Game logs for a specific season
-python -m src.collectors.run collect --game-logs --season 20242025
-
-# Shot data for current season
+# Collect shot data for a season (2015-16 onward)
 python -m src.collectors.run shots --season 20242025
-
-# Test shot collection with a single player
-python -m src.collectors.run shots --player 8478402 --season 20242025
-
-# Historical shot data (2015-present)
-python -m src.collectors.run shots --season 20152016
-
-# Reset collection progress (to re-collect)
-python -m src.collectors.run reset --players
-python -m src.collectors.run reset --game-logs --season 20242025
-python -m src.collectors.run reset --shots --season 20242025
-```
-
-### Resumable Collection
-
-All collection is resumable. If interrupted (Ctrl+C, network error, etc.), just run the same command again - it picks up where it left off.
-
-### Historical Data
-
-Shot data is available from 2015-16 season onwards. Team abbreviations are handled automatically:
-- **ARI** (Arizona Coyotes): 2014-2024
-- **UTA** (Utah Hockey Club): 2024+
-
-### Database Schema
-
-| Table | Description |
-|-------|-------------|
-| `players` | All NHL players with bio, position, team |
-| `games` | Game records with scores, teams, dates |
-| `player_game_stats` | Per-game stats for each player |
-| `shots` | Individual shot events with coordinates, type, result |
-| `collection_progress` | Tracks collection status for resume support |
-
-### Programmatic Access
-
-```python
-from src.database import get_database
-from src.database.queries import get_player_game_log, get_top_scorers
-
-db = get_database()
-
-# Get database stats
-stats = db.get_database_stats()
-print(f"Players: {stats['total_players']}, Shots: {stats['total_shots']}")
-
-# Query player's game log
-games = get_player_game_log(player_id=8478402, season=20242025)
-
-# Get top scorers
-scorers = get_top_scorers(season=20242025, limit=10)
-
-# Get player's shots
-shots = db.get_player_shots(player_id=8478402, season=20242025)
-```
-
-### Legacy Collectors (JSON-based)
-
-```python
-from src.collectors import NHLApiClient, ShotDataCollector
-
-# Initialize collectors
-with ShotDataCollector() as collector:
-    # Collect shots from a single game
-    shots = collector.collect_game_shots("2023020001")
-
-    # Save to file
-    collector.save_shots(shots, "data/raw/shots/game_2023020001.json")
-```
-
-```python
-from src.collectors import PlayerStatsCollector
-
-with PlayerStatsCollector() as collector:
-    # Get a player profile
-    profile = collector.get_player_profile(8478402)  # Connor McDavid
-
-    # Get game log for a season
-    game_log = collector.get_player_game_log(8478402, "20232024")
-```
-
-### Zone Analysis
-
-```python
-from src.processors import ZoneAnalyzer
-
-analyzer = ZoneAnalyzer()
-
-# Process shot data
-for shot in shots:
-    analyzer.process_shot(
-        x=shot.x_coord,
-        y=shot.y_coord,
-        is_goal=shot.is_goal,
-        shot_type=shot.shot_type,
-        player_id=shot.shooter_id,
-        player_name=shot.shooter_name,
-        team_id=shot.team_id,
-        team_abbrev=shot.team_abbrev,
-        opponent_team_id=opponent_id,
-    )
-
-# Get player heat map
-profile = analyzer.get_player_profile(8478402)
-heat_map = profile.get_heat_map()
-```
-
-### Segment Analysis
-
-```python
-from src.processors import SegmentProcessor
-
-processor = SegmentProcessor()
-
-# Process game events
-processor.process_game_events(
-    game_id="2023020001",
-    events=game_events,
-    home_team_id=22,
-    away_team_id=10,
-)
-
-# Get player stats by segment
-early_stats = processor.get_player_segment_stats(8478402, "early_game")
-late_stats = processor.get_player_segment_stats(8478402, "late_game")
-
-# Calculate fatigue indicator
-fatigue = processor.calculate_fatigue_indicator(8478402)
-```
-
-### Game Simulation
-
-```python
-from simulation import GameSimulationEngine, SimulationConfig, PredictionGenerator
-
-# Configure simulation
-config = SimulationConfig(
-    home_team_id=22,  # Edmonton Oilers
-    away_team_id=10,  # Toronto Maple Leafs
-    iterations=10000,
-    use_synergy_adjustments=True,
-    use_clutch_adjustments=True,
-    use_fatigue_adjustments=True,
-)
-
-# Run simulation
-engine = GameSimulationEngine()
-result = engine.simulate(config, home_team, away_team, players)
-
-# Generate prediction report
-generator = PredictionGenerator()
-prediction = generator.generate_prediction(
-    result,
-    home_team_name="Edmonton Oilers",
-    away_team_name="Toronto Maple Leafs",
-)
-
-# Print formatted report
-print(generator.generate_report(prediction))
-
-# Get JSON output for API integration
-json_output = generator.generate_json_output(prediction)
-```
-
-### Synergy Analysis
-
-```python
-from src.analytics.synergy import SynergyAnalyzer
-from src.analytics.clutch_analysis import ClutchAnalyzer, StaminaAnalyzer
-
-# Analyze player synergies
-synergy = SynergyAnalyzer()
-score = synergy.calculate_synergy(player_id_1, player_id_2)
-line_chemistry = synergy.line_synergy([player_1, player_2, player_3])
-
-# Clutch performance analysis
-clutch = ClutchAnalyzer()
-metrics = clutch.get_metrics(player_id)
-print(f"Clutch score: {metrics.clutch_score}")
-print(f"Classification: {metrics.clutch_level}")
-
-# Stamina/fatigue analysis
-stamina = StaminaAnalyzer()
-fatigue = stamina.calculate_fatigue_indicator(player_id)
 ```
 
 ## Configuration
 
-Configuration files are located in the `config/` directory:
-
+Configuration files are located in `config/`:
 - `api_config.yaml`: NHL API endpoints and rate limiting
 - `zones.yaml`: Ice zone definitions for heat maps
 - `segments.yaml`: Game time segment definitions
@@ -350,141 +122,9 @@ Configuration files are located in the `config/` directory:
 
 ## Testing
 
-Run the test suite:
-
 ```bash
 pytest
 ```
-
-With coverage:
-
-```bash
-pytest --cov=src --cov=simulation --cov-report=term-missing
-```
-
-## Implementation Phases
-
-### Phase 1: Data Foundation (Complete)
-- [x] NHL API integration
-- [x] Shot data collection
-- [x] Player stats collection
-- [x] Timestamp data collection
-- [x] Zone-based aggregation system
-- [x] Segment analysis processing
-
-### Phase 2: Analytics Layer (Complete)
-- [x] Heat map generation
-- [x] Zone-specific metrics (xG, Corsi, Fenwick)
-- [x] Matchup history tracking
-- [x] Pattern detection
-
-### Phase 3: Synergy Detection (Complete)
-- [x] Player combination analysis
-- [x] Line chemistry tracking
-- [x] Compatibility matrix
-- [x] Clutch performer identification
-- [x] Stamina/fatigue analysis
-
-### Phase 4: Simulation Engine (Complete)
-- [x] Zone-based expected goals model
-- [x] Line matchup logic with synergy integration
-- [x] Monte Carlo simulation (10,000+ iterations)
-- [x] Segment-specific weighting with clutch/stamina adjustments
-- [x] Win probability predictions with confidence scoring
-
-### Phase 4b: Interactive Local Interface (Complete)
-- [x] Service orchestrator (connects collectors → processors → simulation)
-- [x] Data loader/cache manager (bootstrap team rosters and stats)
-- [x] Interactive CLI (team selection, run simulations, view results)
-- [x] Integration testing for end-to-end workflow (33 tests)
-
-### Phase 5: Validation & Refinement
-- [ ] Historical backtesting
-- [ ] Parameter optimization
-- [ ] Confidence scoring refinement
-
-## API Reference
-
-### Collectors
-
-- `NHLApiClient`: Core API client for NHL Stats API
-- `ShotDataCollector`: Shot location and outcome collection (JSON-based)
-- `PlayerStatsCollector`: Player statistics collection
-- `TimestampDataCollector`: Event timing collection
-- `PlayerCollector`: Collects all NHL players from team rosters (database-backed)
-- `GameLogCollector`: Collects game-by-game statistics for players (database-backed)
-- `ShotDatabaseCollector`: Collects shots and stores in database with player links
-
-### Database
-
-- `Database`: SQLite connection manager with CRUD operations
-- `get_database()`: Get singleton database instance
-- Query functions in `src/database/queries.py`:
-  - `get_player_game_log()`: Player's game-by-game stats
-  - `get_top_scorers()`: Top scorers for a season
-  - `get_player_by_name()`: Search players by name
-  - `get_team_roster_stats()`: All players on a team with stats
-  - `get_player_vs_opponent()`: Player's stats against specific team
-
-### Processors
-
-- `ZoneAnalyzer`: Zone-based shot analysis and heat maps
-- `SegmentProcessor`: Game segment analysis
-- `HeatMapProcessor`: Spatial heat map generation with xG integration
-- `MatchupProcessor`: Player vs player and team vs team matchup tracking
-- `ChemistryTracker`: Synergy ingestion and line chemistry tracking
-
-### Analytics
-
-- `MetricsCalculator`: Statistical calculations (xG, Corsi, Fenwick, PDO)
-- `PatternDetector`: Play style classification and pattern detection
-- `SynergyAnalyzer`: Player combination synergy and compatibility matrices
-- `ClutchAnalyzer`: Clutch performance scoring and classification
-- `StaminaAnalyzer`: Fatigue indicators and late-game performance tracking
-
-### Simulation
-
-- `SimulationConfig`: Configuration for simulation runs (iterations, adjustments, weights)
-- `GameSimulationEngine`: Monte Carlo simulation engine with segment-based modeling
-- `ExpectedGoalsCalculator`: Zone-based expected goals for teams and lines
-- `MatchupAnalyzer`: Line-on-line matchup analysis with synergy integration
-- `AdjustmentCalculator`: Clutch, fatigue, and segment-specific modifiers
-- `PredictionGenerator`: Win probability and formatted prediction output
-- `SimulationResult`: Complete results with score distributions and confidence metrics
-
-### Service Layer
-
-- `Orchestrator`: Main entry point for running predictions
-  - `predict_game()`: Full prediction with team IDs or abbreviations
-  - `predict_by_abbreviation()`: Convenience method for abbreviation-based predictions
-  - `get_quick_prediction()`: Returns dict with key metrics
-  - `get_available_teams()`: List all NHL teams
-  - `refresh_data()`: Refresh cached team data
-- `DataLoader`: Data fetching and caching service
-  - `load_team()`: Load team with roster
-  - `load_player()`: Load player data
-  - `get_cache_status()`: Cache statistics
-- `PredictionOptions`: Configuration for prediction runs
-- `PredictionResult`: Complete prediction output with report
-
-### CLI
-
-- `cli.main`: Interactive command-line interface
-  - Team selection by abbreviation
-  - Multiple simulation modes
-  - Cache management
-
-### Visualization
-
-- `HeatMapVisualizer`: Renders shot and performance heat maps
-- `ChartVisualizer`: Statistical charts and player comparisons
-
-### Models
-
-- `Player`: Player data and statistics
-- `Team`: Team composition and configuration
-- `Game`: Game state and events
-- `Segment`: Game time segment definitions
 
 ## License
 
