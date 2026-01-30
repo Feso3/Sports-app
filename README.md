@@ -17,7 +17,7 @@ Sports-app/
 ├── data/                    # Data storage
 │   ├── raw/                 # Raw API data (JSON)
 │   ├── processed/           # Processed analytics data
-│   ├── cache/               # API response cache
+│   └── cache/               # API response cache
 ├── src/                     # Source code
 │   ├── collectors/          # Data collection modules
 │   ├── database/            # Database layer
@@ -31,6 +31,7 @@ Sports-app/
 ├── config/                  # Configuration files
 ├── docs/                    # Historical context
 ├── tests/                   # Test suite
+├── pyproject.toml           # Project configuration
 └── requirements.txt         # Python dependencies
 ```
 

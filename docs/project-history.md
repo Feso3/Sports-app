@@ -13,3 +13,5 @@ The project began as a player-first analytics effort focused on zone-based perfo
 - Build a backtesting and calibration harness for historical seasons.
 - Expand multi-season data coverage to strengthen model confidence.
 
+*Last updated: 2026-01-30.*
+
