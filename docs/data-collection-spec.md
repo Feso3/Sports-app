@@ -376,7 +376,7 @@ At end of day:
 - [x] All ~800 active players collected
 - [x] Game logs for current season collected
 - [x] CLI tool working for collection and status
-- [ ] Sample queries verified working (manual verification as needed)
+- [ ] Sample queries verified working (manual verification as needed; mark complete once verified locally)
 - [x] Collection is resumable if interrupted
 
 ## Current Notes
