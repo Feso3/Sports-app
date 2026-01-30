@@ -1,6 +1,6 @@
 # Season & Game Segmentation Spec + Roadmap
 
-> Status: Active (remove this file after the season-phase + game-segment pipeline ships.)
+> Status: **IMPLEMENTED** - Pipeline shipped in `src/processors/season_segment_pipeline.py`
 
 ## 1) Specification Sheet
 
@@ -80,5 +80,53 @@ For each player, compute stats for each **season phase × game phase** combinati
 
 ---
 
-## 3) Cleanup Reminder
-This file is temporary and should be **deleted once the season-phase + game-segment pipeline is fully implemented and validated**.
+## 3) Implementation Notes
+
+### Implemented Components
+
+**File:** `src/processors/season_segment_pipeline.py`
+
+1. **Season Phase Tagging** (`SeasonSegmentPipeline.build_season_phase_mapping`)
+   - Splits regular season games into thirds by `game_date`
+   - Tags playoffs via `game_type = 3`
+   - Caches mapping per season
+
+2. **Game Phase Tagging** (`SeasonSegmentPipeline.get_game_phase`)
+   - Uses Option B: existing segment model (early/mid/late game ranges)
+   - Maps period + time_in_period to game phase
+
+3. **Aggregation** (`SeasonSegmentPipeline.aggregate_player_stats`)
+   - Aggregates goals, assists, shots per (season phase × game phase)
+   - Uses shots table for event-level game phase assignment
+   - Tracks sample size categories
+
+4. **Validation** (`SeasonSegmentPipeline.validate_player`, `validate_season`)
+   - Compares aggregated totals to player_game_stats
+   - Reports discrepancies
+
+5. **Export** (`export_to_json`, `export_to_csv`, `export_validation_report`)
+   - JSON with metadata and nested structure
+   - CSV flat format for analysis tools
+   - Validation report for debugging
+
+### CLI Usage
+
+```bash
+# Run full pipeline
+python -m src.processors.run_analysis season-segments --season 20242025
+
+# Single player analysis
+python -m src.processors.run_analysis season-segments --player 8478402
+
+# Validation only
+python -m src.processors.run_analysis season-segments --validate-only
+
+# Query player
+python -m src.processors.run_analysis query --player 8478402
+```
+
+### Output Files
+
+- `data/exports/player_phase_stats_{season}.json` - Full structured data
+- `data/exports/player_phase_stats_{season}.csv` - Flat format
+- `data/exports/validation_{season}.json` - Validation report
