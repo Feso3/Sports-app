@@ -19,7 +19,6 @@ Sports-app/
 │   ├── raw/                 # Raw API data (JSON)
 │   ├── processed/           # Processed analytics data
 │   ├── cache/               # API response cache
-│   └── nhl_players.db       # SQLite database (players, games, shots)
 ├── src/                     # Source code
 │   ├── collectors/          # Data collection modules
 │   │   ├── nhl_api.py       # Core NHL API client
@@ -39,9 +38,19 @@ Sports-app/
 ├── simulation/              # Game simulation engine
 ├── cli/                     # Interactive command-line interface (Phase 4b)
 ├── config/                  # Configuration files
+├── docs/                    # Product documentation and phase context
 ├── tests/                   # Test suite
-└── notebooks/               # Jupyter notebooks for exploration
+└── requirements.txt         # Python dependencies
 ```
+
+## Documentation
+
+- [Technical Specification](Technical%20Specification.md)
+- [Implementation History (Draft)](docs/implementation-history.md)
+- [Development History (Draft)](docs/development-history.md)
+- [Product Roadmap](docs/roadmap.md)
+- [Data Collection Specification](docs/data-collection-spec.md)
+- [Phase 4b Context Capsule](docs/phase-4b-context.md)
 
 ## Installation
 
@@ -54,7 +63,7 @@ Sports-app/
 1. Clone the repository:
 ```bash
 git clone <repository-url>
-cd nhl-analytics
+cd Sports-app
 ```
 
 2. Create a virtual environment:
