@@ -24,9 +24,9 @@ python -m cli.main
 
 Phase 4b adds a usable entry point for running game simulations without writing Python code. This enables testing, iteration, and hands-on exploration during development.
 
-## Problem Statement
+## Problem Statement (Pre-Phase 4b)
 
-The platform currently exists as a library-only implementation:
+Before Phase 4b, the platform existed as a library-only implementation:
 - No CLI scripts, no `main.py`, no `__main__` blocks
 - Must be used programmatically via direct imports
 - No way to quickly test a prediction without writing code

@@ -26,7 +26,7 @@ This roadmap builds from the current codebase (aggregate team xG + Monte Carlo s
 ---
 
 ## Phase 1 — Data Foundation
-**Goal**: Create the historical data pipeline and storage foundation.
+**Goal**: Create the historical data pipeline and storage foundation (code complete; multi-season data backfill still in progress).
 
 **Data sources**
 - NHL Stats API + historical season pulls.
@@ -136,5 +136,5 @@ This roadmap builds from the current codebase (aggregate team xG + Monte Carlo s
 
 ## Current Status Snapshot (2026-01-28)
 - Phase 0 baseline capabilities are in place (simulation engine, analytics, service layer, CLI).
-- Phase 1 data foundation is partially implemented (database schema and collectors exist; multi-season backfill remains).
+- Phase 1 data foundation code is complete (database schema and collectors exist), with multi-season backfill still pending.
 - Phases 2-6 remain in planning and are captured as forward-looking workstreams.
