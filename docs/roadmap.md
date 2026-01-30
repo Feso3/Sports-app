@@ -11,16 +11,17 @@ This roadmap builds from the current codebase (aggregate team xG + Monte Carlo s
 ---
 
 ## Phase 0 — Baseline (Current State)
-**Goal**: Establish a stable baseline to evolve from.
+**Goal**: Establish a stable baseline to evolve from. (Complete)
 
 **Current capabilities**
 - Team-level expected goals by zone, aggregated across current roster stats.
 - Monte Carlo simulation of game outcomes using segment weights and variance.
 - Confidence metrics based on data availability and win-probability clarity.
+- Interactive CLI and service orchestrator for running predictions locally.
 
 **Deliverables**
-- Document baseline data sources (current season team stats, line data, optional player data).
-- Add a “known gaps” section to the Technical Specification.
+- Document baseline data sources (current season team stats, line data, optional player data). ✅
+- Add a “known gaps” section to the Technical Specification. ✅
 
 ---
 
@@ -130,3 +131,10 @@ This roadmap builds from the current codebase (aggregate team xG + Monte Carlo s
 - High data coverage across multiple seasons (player and event data).
 - Measurable improvements in prediction variance and confidence.
 - Clear, explainable matchup insights grounded in player-level evidence.
+
+---
+
+## Current Status Snapshot (2026-01-28)
+- Phase 0 baseline capabilities are in place (simulation engine, analytics, service layer, CLI).
+- Phase 1 data foundation is partially implemented (database schema and collectors exist; multi-season backfill remains).
+- Phases 2-6 remain in planning and are captured as forward-looking workstreams.

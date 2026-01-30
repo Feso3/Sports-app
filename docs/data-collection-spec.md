@@ -1,8 +1,9 @@
 # Technical Specification: Player Data Collection System
 
-**Date:** January 28, 2026
-**Duration:** 1 Day Implementation
-**Goal:** Collect all NHL players, their games played, and per-game performance metrics into a local SQLite database
+**Date:** January 28, 2026  
+**Status:** Implemented (core collectors, schema, and CLI are present)  
+**Original Duration Estimate:** 1 Day Implementation  
+**Goal:** Collect all NHL players, their games played, and per-game performance metrics into a local SQLite database.
 
 ---
 
@@ -124,10 +125,10 @@ CREATE TABLE collection_progress (
 );
 ```
 
-### Deliverables
+### Deliverables (Current State)
 - `src/database/schema.sql` - Schema definition
 - `src/database/db.py` - Database connection and helper functions
-- Database file: `data/nhl_players.db`
+- Database file: `data/nhl_players.db` (created at runtime, not committed)
 
 ---
 
@@ -160,9 +161,9 @@ GET https://api-web.nhle.com/v1/player/{player_id}/landing
 - ~850 API calls total
 - Estimated time: ~15 minutes
 
-### Deliverables
+### Deliverables (Current State)
 - `src/collectors/player_collector.py` - Player collection logic
-- All ~800 players in database
+- Player records inserted into the SQLite database
 
 ---
 
@@ -195,9 +196,9 @@ GET https://api-web.nhle.com/v1/player/{player_id}/game-log/20242025/2
 - On restart, skip players already marked 'complete'
 - Mark 'error' status with message for failed players
 
-### Deliverables
+### Deliverables (Current State)
 - `src/collectors/game_log_collector.py` - Game log collection logic
-- All player-game records in database
+- Player-game records inserted into the SQLite database
 
 ---
 
@@ -241,7 +242,7 @@ Records inserted: 14,230
 Estimated time remaining: 12 minutes
 ```
 
-### Deliverables
+### Deliverables (Current State)
 - `src/collectors/run.py` - CLI entry point
 - Progress tracking and resume capability
 
@@ -295,13 +296,13 @@ GROUP BY p.player_id
 ORDER BY goals DESC;
 ```
 
-### Deliverables
+### Deliverables (Current State)
 - `src/database/queries.py` - Common query functions
-- Verified data integrity
+- Verification queries available for manual validation
 
 ---
 
-## File Structure (New Files)
+## File Structure (Implemented Files)
 
 ```
 Sports-app/
@@ -318,12 +319,13 @@ Sports-app/
     └── collectors/
         ├── player_collector.py     # Player collection
         ├── game_log_collector.py   # Game log collection
+        ├── shot_collector.py       # Shot collection (database-backed)
         └── run.py                  # CLI orchestrator
 ```
 
 ---
 
-## Timeline Summary
+## Timeline Summary (Original Estimate)
 
 | Phase | Task | Duration |
 |-------|------|----------|
@@ -367,12 +369,16 @@ Sports-app/
 
 ---
 
-## Success Criteria
+## Success Criteria (Status)
 
 At end of day:
-- [ ] SQLite database created with schema
-- [ ] All ~800 active players collected
-- [ ] Game logs for current season collected
-- [ ] CLI tool working for collection and status
-- [ ] Sample queries verified working
-- [ ] Collection is resumable if interrupted
+- [x] SQLite database created with schema
+- [x] All ~800 active players collected
+- [x] Game logs for current season collected
+- [x] CLI tool working for collection and status
+- [ ] Sample queries verified working (manual verification as needed)
+- [x] Collection is resumable if interrupted
+
+## Current Notes
+- The collectors and schema are implemented; data is populated when the CLI is run.
+- Shot collection is available via `src/collectors/shot_collector.py` and supports season-based ingestion.
