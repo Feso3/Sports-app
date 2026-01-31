@@ -9,6 +9,10 @@ Usage:
     python -m src.processors.run_analysis shot-locations --season 20242025
     python -m src.processors.run_analysis shot-locations --season 20242025 --player 8478402
     python -m src.processors.run_analysis shot-locations --season 20242025 --min-shots 20
+
+    python -m src.processors.run_analysis goalie-profiles --season 20242025
+    python -m src.processors.run_analysis goalie-profiles --season 20242025 --goalie 8477180
+    python -m src.processors.run_analysis goalie-profiles --season 20242025 --min-shots 200
 """
 
 import argparse
@@ -26,6 +30,10 @@ from src.processors.season_segment_pipeline import (
 from src.processors.player_shot_location_pipeline import (
     PlayerShotLocationPipeline,
     run_pipeline as run_shot_location_pipeline,
+)
+from src.processors.goalie_shot_profile_pipeline import (
+    GoalieShotProfilePipeline,
+    run_pipeline as run_goalie_profile_pipeline,
 )
 
 
@@ -317,6 +325,126 @@ def cmd_shot_locations(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_goalie_profiles(args: argparse.Namespace) -> int:
+    """Run goalie shot profile pipeline."""
+    db = get_database()
+
+    if not db.is_initialized():
+        print("ERROR: Database not initialized. Run data collection first.")
+        return 1
+
+    season = args.season or CURRENT_SEASON
+    output_dir = Path(args.output) if args.output else Path("data/exports")
+    min_shots = args.min_shots or 100
+
+    print("=" * 60)
+    print(f"Goalie Shot Profile Pipeline (Season {season})")
+    print("=" * 60)
+    print()
+
+    pipeline = GoalieShotProfilePipeline(db=db)
+
+    if args.goalie:
+        # Single goalie mode
+        goalie_id = args.goalie
+        goalie = db.get_player(goalie_id)
+        goalie_name = goalie["full_name"] if goalie else f"Goalie {goalie_id}"
+
+        print(f"Building shot profile for: {goalie_name}")
+        print()
+
+        profile = pipeline.build_goalie_profile(goalie_id, season)
+
+        # Display results
+        print(f"Games Played: {profile.games_played}")
+        print(f"Shots Faced: {profile.shots_faced}")
+        print(f"Goals Against: {profile.goals_against}")
+        print(f"Save %: {profile.save_percentage:.2f}%")
+        print(f"Goals Saved Above Expected: {profile.goals_saved_above_expected:+.2f}")
+        print(f"High Danger SV%: {profile.high_danger_save_pct:.2f}%")
+        print()
+
+        print(f"Weak Zones: {', '.join(profile.weak_zones) if profile.weak_zones else 'N/A'}")
+        print(f"Strong Zones: {', '.join(profile.strong_zones) if profile.strong_zones else 'N/A'}")
+        print()
+
+        # Show zone breakdown
+        print("Save % by Zone:")
+        print("-" * 70)
+        print(f"{'Zone':<20} {'Shots':<10} {'Goals':<10} {'SV%':<10} {'xGA':<10}")
+        print("-" * 70)
+
+        sorted_zones = sorted(
+            profile.overall_zone_stats.items(),
+            key=lambda x: x[1].shots_faced,
+            reverse=True
+        )
+
+        for zone, stats in sorted_zones:
+            if stats.shots_faced > 0:
+                print(
+                    f"{zone:<20} {stats.shots_faced:<10} {stats.goals_against:<10} "
+                    f"{stats.save_percentage:<10.2f} {stats.expected_goals_against:<10.2f}"
+                )
+
+        print()
+
+        # Show shot type breakdown
+        print("Save % by Shot Type:")
+        print("-" * 50)
+        for shot_type, stats in profile.shot_type_stats.items():
+            if stats["shots"] > 0:
+                sv_pct = (stats["shots"] - stats["goals"]) / stats["shots"] * 100
+                print(f"  {shot_type:<15}: {stats['shots']:>5} shots, {sv_pct:.2f}% SV")
+
+        print()
+
+        # Show segment breakdown (summarized)
+        print("Save % by Segment:")
+        print("-" * 60)
+
+        from src.processors.season_segment_pipeline import SeasonPhase, GamePhase
+
+        print(f"{'Season Phase':<15}", end="")
+        for gp in GamePhase:
+            print(f"{gp.value:<15}", end="")
+        print()
+
+        for sp in SeasonPhase:
+            print(f"{sp.value:<15}", end="")
+            for gp in GamePhase:
+                seg = profile.segment_stats.get((sp.value, gp.value))
+                if seg and seg.shots_faced > 0:
+                    print(f"{seg.save_percentage:.1f}%{'':<10}", end="")
+                else:
+                    print(f"{'N/A':<15}", end="")
+            print()
+
+        return 0
+
+    # Full pipeline for all goalies
+    print(f"Running full pipeline (min shots faced: {min_shots})...")
+    print("(This may take a while for large datasets)")
+    print()
+
+    profiles = run_goalie_profile_pipeline(
+        season=season,
+        output_dir=output_dir,
+        min_shots=min_shots,
+        db=db,
+    )
+
+    print()
+    print(f"Processed {len(profiles)} goalies with {min_shots}+ shots faced")
+    print(f"Output files saved to: {output_dir}")
+    print(f"  - goalie_shot_profiles_{season}.json")
+    print(f"  - goalie_shot_profiles_{season}.csv")
+    print(f"  - goalie_shot_heatmaps_{season}.json")
+    print(f"  - goalie_shot_simulation_{season}.json")
+
+    return 0
+
+
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -340,6 +468,11 @@ Examples:
   python -m src.processors.run_analysis shot-locations --season 20242025
   python -m src.processors.run_analysis shot-locations --season 20242025 --player 8478402
   python -m src.processors.run_analysis shot-locations --season 20242025 --min-shots 20
+
+  # Goalie profile analysis
+  python -m src.processors.run_analysis goalie-profiles --season 20242025
+  python -m src.processors.run_analysis goalie-profiles --season 20242025 --goalie 8477180
+  python -m src.processors.run_analysis goalie-profiles --season 20242025 --min-shots 200
         """,
     )
 
@@ -433,6 +566,36 @@ Examples:
         help="Output directory (default: data/exports/)",
     )
 
+    # Goalie profiles command
+    goalie_parser = subparsers.add_parser(
+        "goalie-profiles",
+        help="Run goalie shot profile analysis pipeline"
+    )
+    goalie_parser.add_argument(
+        "--season",
+        type=int,
+        default=None,
+        help=f"Season to analyze (default: {CURRENT_SEASON})",
+    )
+    goalie_parser.add_argument(
+        "--goalie",
+        type=int,
+        default=None,
+        help="Single goalie ID for targeted analysis",
+    )
+    goalie_parser.add_argument(
+        "--min-shots",
+        type=int,
+        default=100,
+        help="Minimum shots faced required to include goalie (default: 100)",
+    )
+    goalie_parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Output directory (default: data/exports/)",
+    )
+
     args = parser.parse_args()
 
     # Set up logging
@@ -449,6 +612,8 @@ Examples:
         return cmd_query_player(args)
     elif args.command == "shot-locations":
         return cmd_shot_locations(args)
+    elif args.command == "goalie-profiles":
+        return cmd_goalie_profiles(args)
     else:
         parser.print_help()
         return 0
