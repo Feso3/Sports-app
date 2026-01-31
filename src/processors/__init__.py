@@ -10,6 +10,7 @@ Processors:
     - MatchupProcessor: Historical matchup tracking and analysis
     - ChemistryTracker: Synergy and line chemistry analysis
     - SeasonSegmentPipeline: Season phase × game phase aggregation
+    - PlayerShotLocationPipeline: Player shot location profiles for simulation/heat maps
 """
 
 from src.processors.zone_analysis import ZoneAnalyzer
@@ -24,6 +25,13 @@ from src.processors.season_segment_pipeline import (
     PlayerPhaseStats,
     ValidationResult,
     run_pipeline,
+)
+from src.processors.player_shot_location_pipeline import (
+    PlayerShotLocationPipeline,
+    PlayerShotLocationProfile,
+    SegmentLocationStats,
+    ZoneSegmentStats,
+    run_pipeline as run_shot_location_pipeline,
 )
 
 __all__ = [
@@ -44,4 +52,9 @@ __all__ = [
     "PlayerPhaseStats",
     "ValidationResult",
     "run_pipeline",
+    "PlayerShotLocationPipeline",
+    "PlayerShotLocationProfile",
+    "SegmentLocationStats",
+    "ZoneSegmentStats",
+    "run_shot_location_pipeline",
 ]
