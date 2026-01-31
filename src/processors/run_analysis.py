@@ -5,6 +5,10 @@ Usage:
     python -m src.processors.run_analysis season-segments --season 20242025
     python -m src.processors.run_analysis season-segments --season 20242025 --validate-only
     python -m src.processors.run_analysis season-segments --season 20242025 --player 8478402
+
+    python -m src.processors.run_analysis shot-locations --season 20242025
+    python -m src.processors.run_analysis shot-locations --season 20242025 --player 8478402
+    python -m src.processors.run_analysis shot-locations --season 20242025 --min-shots 20
 """
 
 import argparse
@@ -18,6 +22,10 @@ from src.database import get_database
 from src.processors.season_segment_pipeline import (
     SeasonSegmentPipeline,
     run_pipeline,
+)
+from src.processors.player_shot_location_pipeline import (
+    PlayerShotLocationPipeline,
+    run_pipeline as run_shot_location_pipeline,
 )
 
 
@@ -203,6 +211,112 @@ def cmd_query_player(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_shot_locations(args: argparse.Namespace) -> int:
+    """Run player shot location pipeline."""
+    db = get_database()
+
+    if not db.is_initialized():
+        print("ERROR: Database not initialized. Run data collection first.")
+        return 1
+
+    season = args.season or CURRENT_SEASON
+    output_dir = Path(args.output) if args.output else Path("data/exports")
+    min_shots = args.min_shots or 10
+
+    print("=" * 60)
+    print(f"Player Shot Location Pipeline (Season {season})")
+    print("=" * 60)
+    print()
+
+    pipeline = PlayerShotLocationPipeline(db=db)
+
+    if args.player:
+        # Single player mode
+        player_id = args.player
+        player = db.get_player(player_id)
+        player_name = player["full_name"] if player else f"Player {player_id}"
+
+        print(f"Building shot location profile for: {player_name}")
+        print()
+
+        profile = pipeline.build_player_profile(player_id, season)
+
+        # Display results
+        print(f"Total Shots: {profile.total_shots}")
+        print(f"Total Goals: {profile.total_goals}")
+        print(f"Shooting %: {profile.shooting_percentage:.1f}%")
+        print(f"Goals Above Expected: {profile.goals_above_expected:+.2f}")
+        print(f"High Danger Shot Rate: {profile.high_danger_shot_rate:.1%}")
+        print(f"Preferred Zones: {', '.join(profile.preferred_zones)}")
+        print()
+
+        # Show zone breakdown
+        print("Shot Distribution by Zone:")
+        print("-" * 60)
+        print(f"{'Zone':<20} {'Shots':<8} {'Goals':<8} {'SH%':<8} {'xG':<8}")
+        print("-" * 60)
+
+        sorted_zones = sorted(
+            profile.overall_zone_stats.items(),
+            key=lambda x: x[1].shots,
+            reverse=True
+        )
+
+        for zone, stats in sorted_zones:
+            if stats.shots > 0:
+                print(
+                    f"{zone:<20} {stats.shots:<8} {stats.goals:<8} "
+                    f"{stats.shooting_percentage:<8.1f} {stats.expected_goals:<8.2f}"
+                )
+
+        print()
+
+        # Show segment breakdown (summarized)
+        print("Performance by Segment (Goals/Shots):")
+        print("-" * 60)
+
+        from src.processors.season_segment_pipeline import SeasonPhase, GamePhase
+
+        print(f"{'Season Phase':<15}", end="")
+        for gp in GamePhase:
+            print(f"{gp.value:<15}", end="")
+        print()
+
+        for sp in SeasonPhase:
+            print(f"{sp.value:<15}", end="")
+            for gp in GamePhase:
+                seg = profile.segment_stats.get((sp.value, gp.value))
+                if seg and seg.total_shots > 0:
+                    print(f"{seg.total_goals}/{seg.total_shots:<12}", end="")
+                else:
+                    print(f"{'0/0':<15}", end="")
+            print()
+
+        return 0
+
+    # Full pipeline for all players
+    print(f"Running full pipeline (min shots: {min_shots})...")
+    print("(This may take a while for large datasets)")
+    print()
+
+    profiles = run_shot_location_pipeline(
+        season=season,
+        output_dir=output_dir,
+        min_shots=min_shots,
+        db=db,
+    )
+
+    print()
+    print(f"Processed {len(profiles)} players with {min_shots}+ shots")
+    print(f"Output files saved to: {output_dir}")
+    print(f"  - player_shot_locations_{season}.json")
+    print(f"  - player_shot_locations_{season}.csv")
+    print(f"  - player_shot_heatmaps_{season}.json")
+    print(f"  - player_shot_simulation_{season}.json")
+
+    return 0
+
+
 def main() -> int:
     """Main entry point."""
     parser = argparse.ArgumentParser(
@@ -221,6 +335,11 @@ Examples:
 
   # Query player stats
   python -m src.processors.run_analysis query --player 8478402 --season 20242025
+
+  # Shot location analysis
+  python -m src.processors.run_analysis shot-locations --season 20242025
+  python -m src.processors.run_analysis shot-locations --season 20242025 --player 8478402
+  python -m src.processors.run_analysis shot-locations --season 20242025 --min-shots 20
         """,
     )
 
@@ -284,6 +403,36 @@ Examples:
         help=f"Season to query (default: {CURRENT_SEASON})",
     )
 
+    # Shot locations command
+    shot_parser = subparsers.add_parser(
+        "shot-locations",
+        help="Run player shot location analysis pipeline"
+    )
+    shot_parser.add_argument(
+        "--season",
+        type=int,
+        default=None,
+        help=f"Season to analyze (default: {CURRENT_SEASON})",
+    )
+    shot_parser.add_argument(
+        "--player",
+        type=int,
+        default=None,
+        help="Single player ID for targeted analysis",
+    )
+    shot_parser.add_argument(
+        "--min-shots",
+        type=int,
+        default=10,
+        help="Minimum shots required to include player (default: 10)",
+    )
+    shot_parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Output directory (default: data/exports/)",
+    )
+
     args = parser.parse_args()
 
     # Set up logging
@@ -298,6 +447,8 @@ Examples:
         return cmd_season_segments(args)
     elif args.command == "query":
         return cmd_query_player(args)
+    elif args.command == "shot-locations":
+        return cmd_shot_locations(args)
     else:
         parser.print_help()
         return 0
