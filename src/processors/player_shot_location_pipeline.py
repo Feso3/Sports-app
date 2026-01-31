@@ -514,7 +514,7 @@ class PlayerShotLocationPipeline:
         with self.db.cursor() as cur:
             cur.execute(
                 """
-                SELECT COUNT(DISTINCT game_id) as games
+                SELECT COUNT(DISTINCT pgs.game_id) as games
                 FROM player_game_stats pgs
                 JOIN games g ON pgs.game_id = g.game_id
                 WHERE pgs.player_id = ? AND g.season = ?
