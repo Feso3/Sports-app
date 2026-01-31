@@ -11,6 +11,7 @@ Processors:
     - ChemistryTracker: Synergy and line chemistry analysis
     - SeasonSegmentPipeline: Season phase × game phase aggregation
     - PlayerShotLocationPipeline: Player shot location profiles for simulation/heat maps
+    - GoalieShotProfilePipeline: Goalie save profiles for simulation/heat maps
 """
 
 from src.processors.zone_analysis import ZoneAnalyzer
@@ -32,6 +33,13 @@ from src.processors.player_shot_location_pipeline import (
     SegmentLocationStats,
     ZoneSegmentStats,
     run_pipeline as run_shot_location_pipeline,
+)
+from src.processors.goalie_shot_profile_pipeline import (
+    GoalieShotProfilePipeline,
+    GoalieShotProfile,
+    GoalieSegmentStats,
+    GoalieZoneStats,
+    run_pipeline as run_goalie_profile_pipeline,
 )
 
 __all__ = [
@@ -57,4 +65,9 @@ __all__ = [
     "SegmentLocationStats",
     "ZoneSegmentStats",
     "run_shot_location_pipeline",
+    "GoalieShotProfilePipeline",
+    "GoalieShotProfile",
+    "GoalieSegmentStats",
+    "GoalieZoneStats",
+    "run_goalie_profile_pipeline",
 ]
