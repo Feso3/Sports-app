@@ -2,13 +2,13 @@
 Simulation Adjustments Module
 
 Provides segment-specific weighting, clutch adjustments, and fatigue
-modifiers that integrate with Phase 3 analytics.
+modifiers that integrate with Phase 3 analytics and schedule context.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from simulation.models import GameSegment
 
@@ -22,6 +22,11 @@ if TYPE_CHECKING:
     )
     from src.models.player import Player
     from src.models.team import Team
+    from src.processors.schedule_context_pipeline import (
+        ScheduleContext,
+        FatigueModifier,
+    )
+    from src.processors.momentum_pipeline import MomentumAnalysis
 
 
 @dataclass
@@ -40,15 +45,37 @@ class SegmentAdjustment:
     fatigue_factor: float = 1.0
     momentum_factor: float = 1.0
 
+    # Schedule-based factors (from schedule_context_pipeline)
+    schedule_rest_factor: float = 1.0      # Days rest impact
+    schedule_workload_factor: float = 1.0  # Games in window impact
+    schedule_streak_factor: float = 1.0    # Win/loss streak impact
+
     @property
     def total_modifier(self) -> float:
         """Calculate total modifier for segment."""
+        # Combine schedule factors
+        schedule_modifier = (
+            self.schedule_rest_factor
+            * self.schedule_workload_factor
+            * self.schedule_streak_factor
+        )
+
         return (
             self.base_weight
             * self.offensive_modifier
             * self.clutch_factor
             * self.fatigue_factor
             * self.momentum_factor
+            * schedule_modifier
+        )
+
+    @property
+    def schedule_combined(self) -> float:
+        """Get combined schedule-based modifier."""
+        return (
+            self.schedule_rest_factor
+            * self.schedule_workload_factor
+            * self.schedule_streak_factor
         )
 
 
@@ -443,6 +470,148 @@ class AdjustmentCalculator:
             late_game_players.extend(pair.player_ids)
 
         return late_game_players
+
+    def apply_schedule_context(
+        self,
+        adjustments: TeamAdjustments,
+        schedule_context: ScheduleContext | None,
+    ) -> None:
+        """
+        Apply schedule-based fatigue adjustments.
+
+        Uses data from schedule_context_pipeline to adjust performance
+        based on rest days, workload, and streaks.
+
+        Args:
+            adjustments: TeamAdjustments to modify
+            schedule_context: Schedule context for this game
+        """
+        if not schedule_context:
+            return
+
+        # Import the fatigue config from the pipeline
+        from src.processors.schedule_context_pipeline import (
+            FATIGUE_CONFIG,
+            ScheduleContextPipeline,
+        )
+
+        pipeline = ScheduleContextPipeline()
+        fatigue_mod = pipeline.calculate_fatigue_modifier(schedule_context)
+
+        # Apply rest factor to all segments (affects whole game)
+        for segment_adj in [
+            adjustments.early_game,
+            adjustments.mid_game,
+            adjustments.late_game,
+            adjustments.overtime,
+        ]:
+            segment_adj.schedule_rest_factor = fatigue_mod.rest_factor
+            segment_adj.schedule_workload_factor = fatigue_mod.workload_factor
+            segment_adj.schedule_streak_factor = fatigue_mod.streak_factor
+
+        # Late game and overtime are more affected by fatigue
+        if fatigue_mod.fatigue_level in ("tired", "exhausted"):
+            # Additional penalty for tired teams late in game
+            penalty = 0.97 if fatigue_mod.fatigue_level == "tired" else 0.94
+            adjustments.late_game.fatigue_factor *= penalty
+            adjustments.overtime.fatigue_factor *= penalty * 0.98
+
+    def apply_player_momentum(
+        self,
+        adjustments: TeamAdjustments,
+        player_momentum: dict[int, MomentumAnalysis] | None,
+        team: Team,
+    ) -> None:
+        """
+        Apply player momentum (hot/cold streaks) to team adjustments.
+
+        Args:
+            adjustments: TeamAdjustments to modify
+            player_momentum: Dict mapping player_id to MomentumAnalysis
+            team: Team being adjusted
+        """
+        if not player_momentum:
+            return
+
+        from src.processors.momentum_pipeline import MomentumState, MomentumPipeline
+
+        pipeline = MomentumPipeline()
+
+        # Calculate weighted team momentum
+        momentum_sum = 0.0
+        weight_sum = 0.0
+
+        # Get all skater IDs
+        all_skaters = []
+        if hasattr(team, 'roster') and hasattr(team.roster, 'all_skaters'):
+            all_skaters = team.roster.all_skaters
+        elif hasattr(team, 'forward_lines'):
+            for line in team.forward_lines:
+                all_skaters.extend(line.player_ids)
+            for pair in team.defense_pairs:
+                all_skaters.extend(pair.player_ids)
+
+        for player_id in all_skaters:
+            if player_id in player_momentum:
+                analysis = player_momentum[player_id]
+                modifier = pipeline.get_momentum_modifier(analysis)
+
+                # Weight by player importance (simplified)
+                weight = 1.0
+                momentum_sum += (modifier - 1.0) * weight
+                weight_sum += weight
+
+        if weight_sum > 0:
+            avg_momentum_effect = momentum_sum / weight_sum
+            team_momentum_modifier = 1.0 + avg_momentum_effect
+
+            # Apply to all segments
+            for segment_adj in [
+                adjustments.early_game,
+                adjustments.mid_game,
+                adjustments.late_game,
+                adjustments.overtime,
+            ]:
+                segment_adj.momentum_factor *= team_momentum_modifier
+
+    def calculate_full_adjustments(
+        self,
+        team: Team,
+        players: dict[int, Player] | None = None,
+        schedule_context: ScheduleContext | None = None,
+        player_momentum: dict[int, MomentumAnalysis] | None = None,
+    ) -> TeamAdjustments:
+        """
+        Calculate complete adjustments including all factors.
+
+        This is the main entry point for getting team adjustments
+        that incorporate:
+        - Base segment weights
+        - Clutch performance
+        - Stamina/fatigue (in-game)
+        - Schedule context (rest, workload, streaks)
+        - Player momentum (hot/cold streaks)
+        - Team resilience
+
+        Args:
+            team: Team to calculate adjustments for
+            players: Optional player data dictionary
+            schedule_context: Schedule context for this game
+            player_momentum: Dict mapping player_id to MomentumAnalysis
+
+        Returns:
+            TeamAdjustments with all modifiers applied
+        """
+        # Start with base calculations
+        adjustments = self.calculate_team_adjustments(team, players)
+
+        # Apply schedule context
+        self.apply_schedule_context(adjustments, schedule_context)
+
+        # Apply player momentum
+        self.apply_player_momentum(adjustments, player_momentum, team)
+
+        return adjustments
 
 
 @dataclass
