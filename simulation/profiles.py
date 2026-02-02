@@ -602,9 +602,89 @@ class SimulationProfileBuilder:
         player_id: int,
         season: int,
     ) -> ShotProfile:
-        """Load shot location and type profile from shots data."""
+        """Load shot location and type profile from player shot location pipeline."""
+        from src.processors.player_shot_location_pipeline import PlayerShotLocationPipeline
+
         profile = ShotProfile()
 
+        try:
+            # Use the existing pipeline to build the profile
+            pipeline = PlayerShotLocationPipeline(db=self.db)
+            location_profile = pipeline.build_player_profile(player_id, season)
+
+            if location_profile.total_shots > 0:
+                # Get zone distribution (heat map data)
+                profile.zone_distribution = location_profile.get_heat_map_data()
+
+                # Get zone-specific shooting percentages
+                for zone, zone_stats in location_profile.overall_zone_stats.items():
+                    if zone_stats.shots > 0:
+                        profile.zone_shooting_pct[zone] = zone_stats.shooting_percentage
+
+                # Get shot type distribution and effectiveness from overall stats
+                total_shots = location_profile.total_shots
+                for zone, zone_stats in location_profile.overall_zone_stats.items():
+                    for shot_type, field_name in [
+                        ("wrist", "wrist_shots"),
+                        ("slap", "slap_shots"),
+                        ("snap", "snap_shots"),
+                        ("backhand", "backhand_shots"),
+                        ("tip", "tip_shots"),
+                        ("wrap_around", "wrap_around_shots"),
+                    ]:
+                        count = getattr(zone_stats, field_name, 0)
+                        if count > 0:
+                            profile.shot_type_distribution[shot_type] = (
+                                profile.shot_type_distribution.get(shot_type, 0) +
+                                count / total_shots
+                            )
+
+                # Calculate shot type effectiveness from shots table
+                self._load_shot_type_effectiveness(profile, player_id, season)
+
+        except Exception as e:
+            logger.warning(f"Failed to load shot profile for player {player_id}: {e}")
+            # Fallback to basic query
+            self._load_shot_profile_fallback(profile, player_id, season)
+
+        return profile
+
+    def _load_shot_type_effectiveness(
+        self,
+        profile: ShotProfile,
+        player_id: int,
+        season: int,
+    ) -> None:
+        """Load shot type effectiveness from shots data."""
+        with self.db.cursor() as cur:
+            cur.execute(
+                """
+                SELECT
+                    shot_type,
+                    COUNT(*) as count,
+                    SUM(is_goal) as goals
+                FROM shots
+                WHERE player_id = ? AND season = ?
+                GROUP BY shot_type
+                """,
+                (player_id, season),
+            )
+            rows = cur.fetchall()
+
+            for row in rows:
+                shot_type = row["shot_type"] or "unknown"
+                if row["count"] > 0:
+                    profile.shot_type_effectiveness[shot_type] = (
+                        (row["goals"] or 0) / row["count"] * 100
+                    )
+
+    def _load_shot_profile_fallback(
+        self,
+        profile: ShotProfile,
+        player_id: int,
+        season: int,
+    ) -> None:
+        """Fallback method to load basic shot profile from shots table."""
         with self.db.cursor() as cur:
             # Get shot type distribution
             cur.execute(
@@ -631,16 +711,30 @@ class SimulationProfileBuilder:
                             (row["goals"] or 0) / row["count"] * 100
                         )
 
-        return profile
-
     def _load_goalie_zone_profile(
         self,
         goalie_id: int,
         season: int,
     ) -> dict[str, float]:
-        """Load goalie save percentage by zone."""
-        # This would integrate with the goalie_shot_profile_pipeline
-        # For now return empty dict - can be populated from pipeline data
+        """Load goalie save percentage by zone using goalie shot profile pipeline."""
+        from src.processors.goalie_shot_profile_pipeline import GoalieShotProfilePipeline
+
+        try:
+            pipeline = GoalieShotProfilePipeline(db=self.db)
+            goalie_profile = pipeline.build_goalie_profile(goalie_id, season)
+
+            if goalie_profile.shots_faced > 0:
+                # Get zone save percentages (converted to decimal 0-1 for consistency)
+                zone_save_pct = {}
+                for zone, zone_stats in goalie_profile.overall_zone_stats.items():
+                    if zone_stats.shots_faced > 0:
+                        # Convert percentage (0-100) to decimal (0-1)
+                        zone_save_pct[zone] = zone_stats.save_percentage / 100
+                return zone_save_pct
+
+        except Exception as e:
+            logger.warning(f"Failed to load goalie zone profile for {goalie_id}: {e}")
+
         return {}
 
     def _load_goalie_shot_type_profile(
@@ -648,9 +742,28 @@ class SimulationProfileBuilder:
         goalie_id: int,
         season: int,
     ) -> dict[str, float]:
-        """Load goalie save percentage by shot type."""
-        profile = {}
+        """Load goalie save percentage by shot type using goalie shot profile pipeline."""
+        from src.processors.goalie_shot_profile_pipeline import GoalieShotProfilePipeline
 
+        try:
+            pipeline = GoalieShotProfilePipeline(db=self.db)
+            goalie_profile = pipeline.build_goalie_profile(goalie_id, season)
+
+            if goalie_profile.shots_faced > 0:
+                # Get shot type save percentages
+                shot_type_save_pct = {}
+                for shot_type, stats in goalie_profile.shot_type_stats.items():
+                    if stats["shots"] > 0:
+                        saves = stats["shots"] - stats["goals"]
+                        # Return as decimal (0-1)
+                        shot_type_save_pct[shot_type] = saves / stats["shots"]
+                return shot_type_save_pct
+
+        except Exception as e:
+            logger.warning(f"Failed to load goalie shot type profile for {goalie_id}: {e}")
+
+        # Fallback to basic query
+        profile = {}
         with self.db.cursor() as cur:
             cur.execute(
                 """
