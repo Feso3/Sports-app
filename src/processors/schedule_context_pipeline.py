@@ -181,7 +181,7 @@ class ScheduleContextPipeline:
                 FROM games g
                 WHERE (g.home_team_abbrev = ? OR g.away_team_abbrev = ?)
                 AND g.season = ?
-                AND g.game_state = 'OFF'
+                AND g.game_state IN ('OFF', 'FINAL')
                 ORDER BY g.game_date, g.game_id
                 """,
                 (team_abbrev, team_abbrev, team_abbrev, team_abbrev, team_abbrev, season),
