@@ -12,6 +12,8 @@ from typing import Any
 
 from loguru import logger
 
+from diagnostics import diag, numeric_stats, summarize_list
+
 from simulation import (
     GameSimulationEngine,
     PredictionGenerator,
@@ -157,56 +159,65 @@ class Orchestrator:
             f"{home_team_id or home_team_abbrev} vs {away_team_id or away_team_abbrev}"
         )
 
-        # Load teams
-        home_team = self.data_loader.load_team(
-            team_id=home_team_id, team_abbrev=home_team_abbrev
-        )
-        away_team = self.data_loader.load_team(
-            team_id=away_team_id, team_abbrev=away_team_abbrev
-        )
+        # ── [INGEST] ────────────────────────────────────────────────
+        with diag.timer("INGEST"):
+            home_team = self.data_loader.load_team(
+                team_id=home_team_id, team_abbrev=home_team_abbrev
+            )
+            away_team = self.data_loader.load_team(
+                team_id=away_team_id, team_abbrev=away_team_abbrev
+            )
 
-        logger.info(f"Loaded teams: {home_team.name} vs {away_team.name}")
+            logger.info(f"Loaded teams: {home_team.name} vs {away_team.name}")
 
-        # Load players for both teams
-        home_players = self.data_loader.load_team_players(home_team)
-        away_players = self.data_loader.load_team_players(away_team)
+            home_players = self.data_loader.load_team_players(home_team)
+            away_players = self.data_loader.load_team_players(away_team)
 
-        # Merge player dictionaries
-        all_players: dict[int, Player] = {}
-        all_players.update(home_players)
-        all_players.update(away_players)
+            all_players: dict[int, Player] = {}
+            all_players.update(home_players)
+            all_players.update(away_players)
 
-        logger.info(f"Loaded {len(all_players)} players total")
+            logger.info(f"Loaded {len(all_players)} players total")
 
-        # Build simulation config
-        config = SimulationConfig(
-            home_team_id=home_team.team_id,
-            away_team_id=away_team.team_id,
-            iterations=options.iterations,
-            mode=options.mode,
-            use_synergy_adjustments=options.use_synergy and self.synergy_analyzer is not None,
-            use_clutch_adjustments=options.use_clutch and self.clutch_analyzer is not None,
-            use_fatigue_adjustments=options.use_fatigue and self.stamina_analyzer is not None,
-        )
+        # Diagnostics: INGEST checkpoint
+        self._diag_ingest(home_team, away_team, home_players, away_players, all_players)
 
-        # Run simulation
-        logger.info(f"Running simulation with {config.iterations} iterations...")
-        sim_result = self.engine.simulate(
-            config=config,
-            home_team=home_team,
-            away_team=away_team,
-            players=all_players,
-        )
+        # ── [FEATURE] ───────────────────────────────────────────────
+        with diag.timer("FEATURE"):
+            config = SimulationConfig(
+                home_team_id=home_team.team_id,
+                away_team_id=away_team.team_id,
+                iterations=options.iterations,
+                mode=options.mode,
+                use_synergy_adjustments=options.use_synergy and self.synergy_analyzer is not None,
+                use_clutch_adjustments=options.use_clutch and self.clutch_analyzer is not None,
+                use_fatigue_adjustments=options.use_fatigue and self.stamina_analyzer is not None,
+            )
 
-        # Generate prediction summary
-        prediction = self.prediction_generator.generate_prediction(
-            result=sim_result,
-            home_team_name=home_team.name,
-            away_team_name=away_team.name,
-        )
+        # Diagnostics: FEATURE checkpoint
+        self._diag_feature(config, home_team, away_team, all_players)
 
-        # Generate report
-        report = self.prediction_generator.generate_report(prediction)
+        # ── [SIM] ───────────────────────────────────────────────────
+        with diag.timer("SIM"):
+            logger.info(f"Running simulation with {config.iterations} iterations...")
+            sim_result = self.engine.simulate(
+                config=config,
+                home_team=home_team,
+                away_team=away_team,
+                players=all_players,
+            )
+
+        # Diagnostics: SIM checkpoint
+        self._diag_sim(sim_result)
+
+        # ── [OUTPUT] ────────────────────────────────────────────────
+        with diag.timer("OUTPUT"):
+            prediction = self.prediction_generator.generate_prediction(
+                result=sim_result,
+                home_team_name=home_team.name,
+                away_team_name=away_team.name,
+            )
+            report = self.prediction_generator.generate_report(prediction)
 
         # Build result
         result = PredictionResult(
@@ -229,6 +240,9 @@ class Orchestrator:
             report=report,
             players_loaded=len(all_players),
         )
+
+        # Diagnostics: OUTPUT checkpoint
+        self._diag_output(prediction, report)
 
         logger.info(
             f"Prediction complete: {prediction.predicted_winner_name} "
@@ -326,8 +340,161 @@ class Orchestrator:
             "overtime_chance": round(result.prediction.win_probability.overtime_pct, 3),
         }
 
+    # -- Diagnostics helpers (zero cost when diag is disabled) ----------------
+
+    def _diag_ingest(
+        self,
+        home_team: Team,
+        away_team: Team,
+        home_players: dict[int, Player],
+        away_players: dict[int, Player],
+        all_players: dict[int, Player],
+    ) -> None:
+        """Emit [INGEST] checkpoint diagnostics."""
+        if not diag.enabled:
+            return
+
+        home_roster_size = len(home_team.roster.all_players)
+        away_roster_size = len(away_team.roster.all_players)
+
+        diag.event("INGEST", {
+            "teams_loaded": 2,
+            "home_team": home_team.abbreviation,
+            "away_team": away_team.abbreviation,
+            "home_roster_size": home_roster_size,
+            "away_roster_size": away_roster_size,
+            "home_players_loaded": len(home_players),
+            "away_players_loaded": len(away_players),
+            "total_players": len(all_players),
+        })
+
+        # Sample players (normal+ level)
+        if diag.level in ("normal", "verbose"):
+            sample = summarize_list(
+                list(all_players.values())[:3],
+                "players",
+                key_fields=["player_id", "full_name", "position_code"],
+            )
+            diag.event("INGEST", {"player_samples": sample}, level="normal")
+
+        # Career stats sanity (verbose)
+        if diag.level == "verbose":
+            gp_values = [
+                p.career_stats.games_played
+                for p in all_players.values()
+                if p.career_stats
+            ]
+            if gp_values:
+                diag.event("INGEST", {
+                    "career_gp_stats": numeric_stats(gp_values, "games_played"),
+                }, level="verbose")
+
+        # Sanity checks
+        diag.assert_sanity("home_players_loaded", len(home_players), expected_range=(1, 50))
+        diag.assert_sanity("away_players_loaded", len(away_players), expected_range=(1, 50))
+
+    def _diag_feature(
+        self,
+        config: SimulationConfig,
+        home_team: Team,
+        away_team: Team,
+        all_players: dict[int, Player],
+    ) -> None:
+        """Emit [FEATURE] checkpoint diagnostics."""
+        if not diag.enabled:
+            return
+
+        diag.event("FEATURE", {
+            "iterations": config.iterations,
+            "mode": config.mode.value,
+            "synergy_enabled": config.use_synergy_adjustments,
+            "clutch_enabled": config.use_clutch_adjustments,
+            "fatigue_enabled": config.use_fatigue_adjustments,
+            "variance_factor": config.variance_factor,
+        })
+
+        if diag.level in ("normal", "verbose"):
+            diag.event("FEATURE", {
+                "segment_weights": config.segment_weights,
+                "home_forwards": len(home_team.roster.forwards),
+                "home_defensemen": len(home_team.roster.defensemen),
+                "home_goalies": len(home_team.roster.goalies),
+                "away_forwards": len(away_team.roster.forwards),
+                "away_defensemen": len(away_team.roster.defensemen),
+                "away_goalies": len(away_team.roster.goalies),
+            }, level="normal")
+
+        diag.assert_sanity("iterations", config.iterations, expected_range=(100, 100000))
+        diag.assert_sanity("variance_factor", config.variance_factor, expected_range=(0.0, 0.5))
+
+    def _diag_sim(self, sim_result: SimulationResult) -> None:
+        """Emit [SIM] checkpoint diagnostics."""
+        if not diag.enabled:
+            return
+
+        diag.event("SIM", {
+            "total_iterations": sim_result.total_iterations,
+            "home_wins": sim_result.home_wins,
+            "away_wins": sim_result.away_wins,
+            "home_win_pct": round(sim_result.home_win_probability, 4),
+            "away_win_pct": round(sim_result.away_win_probability, 4),
+            "overtime_games": sim_result.overtime_games,
+            "shootout_games": sim_result.shootout_games,
+        })
+
+        if diag.level in ("normal", "verbose"):
+            diag.event("SIM", {
+                "avg_home_xg": round(sim_result.average_home_xg, 4),
+                "avg_away_xg": round(sim_result.average_away_xg, 4),
+                "confidence_score": round(sim_result.confidence_score, 4),
+                "variance_indicator": sim_result.variance_indicator,
+                "most_likely_score": sim_result.score_distribution.most_likely_score(),
+            }, level="normal")
+
+        if diag.level == "verbose" and sim_result.sample_games:
+            sample_scores = [
+                {"game": g.game_number, "score": f"{g.home_score}-{g.away_score}", "ot": g.went_to_overtime}
+                for g in sim_result.sample_games[:3]
+            ]
+            diag.event("SIM", {"sample_games": sample_scores}, level="verbose")
+
+        diag.assert_sanity(
+            "home_win_pct", sim_result.home_win_probability, expected_range=(0.0, 1.0)
+        )
+        diag.assert_sanity(
+            "total_iterations", sim_result.total_iterations, expected_range=(100, 100000)
+        )
+
+    def _diag_output(self, prediction: PredictionSummary, report: str) -> None:
+        """Emit [OUTPUT] checkpoint diagnostics."""
+        if not diag.enabled:
+            return
+
+        diag.event("OUTPUT", {
+            "predicted_winner": prediction.predicted_winner_name,
+            "win_confidence": prediction.win_confidence,
+            "home_win_pct": round(prediction.win_probability.home_win_pct, 4),
+            "away_win_pct": round(prediction.win_probability.away_win_pct, 4),
+            "most_likely_score": f"{prediction.most_likely_score[0]}-{prediction.most_likely_score[1]}",
+            "matchup_type": prediction.matchup_type,
+            "report_length_chars": len(report),
+        })
+
+        if diag.level in ("normal", "verbose"):
+            diag.event("OUTPUT", {
+                "overtime_pct": round(prediction.win_probability.overtime_pct, 4),
+                "data_quality_score": round(prediction.data_quality_score, 4),
+                "prediction_confidence": round(prediction.prediction_confidence, 4),
+                "key_advantages": prediction.key_advantages[:3],
+                "key_disadvantages": prediction.key_disadvantages[:3],
+            }, level="normal")
+
+        diag.record_output("stdout (prediction report)")
+        diag.assert_sanity("report_length", len(report), expected_range=(50, 10000))
+
     def close(self) -> None:
         """Clean up resources."""
+        diag.close()
         self.data_loader.close()
 
     def __enter__(self) -> "Orchestrator":
