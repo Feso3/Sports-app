@@ -16,6 +16,7 @@ from typing import Any
 
 from loguru import logger
 
+from diagnostics import DiagConfig, diag
 from src.service.orchestrator import Orchestrator, PredictionOptions, TeamInfo
 
 
@@ -349,14 +350,42 @@ def refresh_team_data(orchestrator: Orchestrator, teams: list[TeamInfo]) -> None
             print("  Done!")
 
 
+def configure_diagnostics() -> None:
+    """Configure diagnostics from CLI flags."""
+    enabled = "--diagnostics" in sys.argv
+    level = "lite"
+    strict = "--strict" in sys.argv
+
+    for i, arg in enumerate(sys.argv):
+        if arg == "--diag-level" and i + 1 < len(sys.argv):
+            level = sys.argv[i + 1]
+
+    if enabled:
+        jsonl_path = None
+        for i, arg in enumerate(sys.argv):
+            if arg == "--diag-log" and i + 1 < len(sys.argv):
+                jsonl_path = sys.argv[i + 1]
+
+        diag.configure(DiagConfig(
+            enabled=True,
+            level=level,
+            strict=strict,
+            jsonl_path=jsonl_path,
+        ))
+        print(f"[DIAG] Diagnostics enabled (level={level}, strict={strict})")
+
+
 def main() -> int:
     """Main entry point."""
     # Check for command line flags
     verbose = "--verbose" in sys.argv or "-v" in sys.argv
     configure_logging(verbose)
+    configure_diagnostics()
 
     try:
         run_interactive()
+        # Print diagnostics checklist at end if enabled
+        diag.print_checklist()
         return 0
     except Exception as e:
         print(f"Fatal error: {e}")
