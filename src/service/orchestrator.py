@@ -3,6 +3,11 @@ Orchestrator Service
 
 Coordinates the prediction workflow by integrating data loading,
 processing, simulation, and result generation.
+
+The orchestrator bridges three data sources:
+  1. NHL API (via DataLoader) - roster/bio data
+  2. Local SQLite DB (via DBEnrichment) - 5+ years of collected stats
+  3. Simulation engine - Monte Carlo game simulation
 """
 
 from __future__ import annotations
@@ -26,6 +31,7 @@ from src.analytics import ClutchAnalyzer, StaminaAnalyzer, SynergyAnalyzer
 from src.models.player import Player
 from src.models.team import Team
 from src.service.data_loader import CacheStatus, DataLoader
+from src.service.db_enrichment import DBEnrichment, EnrichmentSummary
 
 
 @dataclass
@@ -94,6 +100,7 @@ class Orchestrator:
         synergy_analyzer: SynergyAnalyzer | None = None,
         clutch_analyzer: ClutchAnalyzer | None = None,
         stamina_analyzer: StaminaAnalyzer | None = None,
+        db_enrichment: DBEnrichment | None = None,
     ) -> None:
         """
         Initialize the orchestrator.
@@ -103,11 +110,15 @@ class Orchestrator:
             synergy_analyzer: Optional synergy analyzer
             clutch_analyzer: Optional clutch performance analyzer
             stamina_analyzer: Optional stamina/fatigue analyzer
+            db_enrichment: DB enrichment service (creates one if not provided)
         """
         self.data_loader = data_loader or DataLoader()
         self.synergy_analyzer = synergy_analyzer
         self.clutch_analyzer = clutch_analyzer
         self.stamina_analyzer = stamina_analyzer
+
+        # DB enrichment bridges local database to simulation models
+        self.db_enrichment = db_enrichment or DBEnrichment()
 
         # Initialize simulation engine
         self.engine = GameSimulationEngine(
@@ -179,11 +190,26 @@ class Orchestrator:
 
             logger.info(f"Loaded {len(all_players)} players total")
 
+            # Enrich teams and players with local DB data
+            enrichment = self.db_enrichment.enrich_all(
+                home_team=home_team,
+                away_team=away_team,
+                all_players=all_players,
+            )
+
         # Diagnostics: INGEST checkpoint
         self._diag_ingest(home_team, away_team, home_players, away_players, all_players)
+        self._diag_enrichment(enrichment, home_team, away_team, all_players)
 
         # ── [FEATURE] ───────────────────────────────────────────────
         with diag.timer("FEATURE"):
+            # Fatigue is available when DB enrichment provides schedule context,
+            # even without a StaminaAnalyzer (which provides per-player fatigue).
+            has_fatigue_data = (
+                (self.stamina_analyzer is not None) or
+                (enrichment.home_fatigue is not None or enrichment.away_fatigue is not None)
+            )
+
             config = SimulationConfig(
                 home_team_id=home_team.team_id,
                 away_team_id=away_team.team_id,
@@ -191,7 +217,8 @@ class Orchestrator:
                 mode=options.mode,
                 use_synergy_adjustments=options.use_synergy and self.synergy_analyzer is not None,
                 use_clutch_adjustments=options.use_clutch and self.clutch_analyzer is not None,
-                use_fatigue_adjustments=options.use_fatigue and self.stamina_analyzer is not None,
+                use_fatigue_adjustments=options.use_fatigue and has_fatigue_data,
+                season_phase=enrichment.season_phase,
             )
 
         # Diagnostics: FEATURE checkpoint
@@ -491,6 +518,160 @@ class Orchestrator:
 
         diag.record_output("stdout (prediction report)")
         diag.assert_sanity("report_length", len(report), expected_range=(50, 10000))
+
+    def _diag_enrichment(
+        self,
+        enrichment: EnrichmentSummary,
+        home_team: Team,
+        away_team: Team,
+        all_players: dict[int, Player],
+    ) -> None:
+        """Emit diagnostics for DB enrichment (all sim data branches)."""
+        if not diag.enabled:
+            return
+
+        # ── SESSION PHASE ──────────────────────────────────────────
+        diag.event("INGEST", {
+            "branch": "session_phase",
+            "season": enrichment.season,
+            "season_phase": enrichment.season_phase,
+            "status": "OK" if enrichment.season_phase else "MISSING",
+        })
+        diag.assert_sanity("season", enrichment.season, expected_range=(20202021, 20262027))
+
+        # ── TEAM ROSTERS & LINE MATCHUPS ───────────────────────────
+        diag.event("INGEST", {
+            "branch": "rosters_and_lines",
+            "home_team_stats_loaded": enrichment.home_team_stats_loaded,
+            "away_team_stats_loaded": enrichment.away_team_stats_loaded,
+            "home_forward_lines": enrichment.home_lines_built,
+            "home_defense_pairs": enrichment.home_defense_pairs_built,
+            "away_forward_lines": enrichment.away_lines_built,
+            "away_defense_pairs": enrichment.away_defense_pairs_built,
+            "home_goalie_set": enrichment.home_goalie_set,
+            "away_goalie_set": enrichment.away_goalie_set,
+            "home_gp": home_team.current_season_stats.games_played,
+            "away_gp": away_team.current_season_stats.games_played,
+            "status": "OK" if (enrichment.home_lines_built > 0 and enrichment.away_lines_built > 0) else "MISSING",
+        })
+        diag.assert_sanity("home_forward_lines", enrichment.home_lines_built, expected_range=(1, 4))
+        diag.assert_sanity("away_forward_lines", enrichment.away_lines_built, expected_range=(1, 4))
+
+        # ── PLAYER WEIGHTS PER LOCATION ────────────────────────────
+        players_with_zones = sum(
+            1 for p in all_players.values()
+            if p.career_stats.zone_stats
+        )
+        players_with_heatmap = sum(
+            1 for p in all_players.values()
+            if p.offensive_heat_map
+        )
+        diag.event("INGEST", {
+            "branch": "player_weights_location",
+            "players_enriched": enrichment.players_enriched,
+            "players_with_zone_stats": players_with_zones,
+            "players_with_heatmap": players_with_heatmap,
+            "players_with_matchup_data": enrichment.players_with_matchup_data,
+            "home_offensive_zones": len(home_team.offensive_heat_map),
+            "home_defensive_zones": len(home_team.defensive_heat_map),
+            "away_offensive_zones": len(away_team.offensive_heat_map),
+            "away_defensive_zones": len(away_team.defensive_heat_map),
+            "status": "OK" if players_with_zones > 0 else "MISSING",
+        })
+        diag.assert_sanity("players_enriched", enrichment.players_enriched, expected_range=(1, 100))
+
+        if diag.level in ("normal", "verbose"):
+            # Sample zone strengths
+            home_zones = {z: round(v, 3) for z, v in sorted(home_team.offensive_heat_map.items())[:5]}
+            diag.event("INGEST", {
+                "branch": "player_weights_location_detail",
+                "home_offensive_zone_sample": home_zones,
+                "home_goals_for": home_team.current_season_stats.goals_for,
+                "home_shots_for": home_team.current_season_stats.shots_for,
+                "away_goals_for": away_team.current_season_stats.goals_for,
+                "away_shots_for": away_team.current_season_stats.shots_for,
+            }, level="normal")
+
+        # ── LINE WEIGHTS (SEASON PHASE) ────────────────────────────
+        home_line_goals = sum(line.goals_for for line in home_team.forward_lines)
+        away_line_goals = sum(line.goals_for for line in away_team.forward_lines)
+        diag.event("FEATURE", {
+            "branch": "line_weights",
+            "home_line_total_goals": home_line_goals,
+            "away_line_total_goals": away_line_goals,
+            "home_line_details": [
+                {
+                    "line": l.line_number,
+                    "players": len(l.player_ids),
+                    "gf": l.goals_for,
+                    "toi_s": l.time_on_ice_seconds,
+                    "corsi": round(l.corsi_percentage, 3),
+                }
+                for l in home_team.forward_lines
+            ],
+            "home_dpair_details": [
+                {
+                    "pair": p.line_number,
+                    "players": len(p.player_ids),
+                    "gf": p.goals_for,
+                    "toi_s": p.time_on_ice_seconds,
+                }
+                for p in home_team.defense_pairs
+            ],
+            "season_phase": enrichment.season_phase,
+            "status": "OK" if home_line_goals > 0 else "MISSING",
+        })
+
+        # ── SEGMENT STATS (EARLY/MID/LATE) ─────────────────────────
+        hs = home_team.current_season_stats
+        a_s = away_team.current_season_stats
+        diag.event("FEATURE", {
+            "branch": "segment_stats",
+            "home_early_gf": hs.early_game_goals_for,
+            "home_mid_gf": hs.mid_game_goals_for,
+            "home_late_gf": hs.late_game_goals_for,
+            "home_early_ga": hs.early_game_goals_against,
+            "home_mid_ga": hs.mid_game_goals_against,
+            "home_late_ga": hs.late_game_goals_against,
+            "away_early_gf": a_s.early_game_goals_for,
+            "away_mid_gf": a_s.mid_game_goals_for,
+            "away_late_gf": a_s.late_game_goals_for,
+            "status": "OK" if (hs.early_game_goals_for + hs.mid_game_goals_for + hs.late_game_goals_for) > 0 else "MISSING",
+        })
+
+        # ── STREAKS & FACTORS ──────────────────────────────────────
+        fatigue_status = "OK" if (enrichment.home_fatigue or enrichment.away_fatigue) else "MISSING"
+        home_fatigue_info = {}
+        away_fatigue_info = {}
+        if enrichment.home_fatigue:
+            hf = enrichment.home_fatigue
+            home_fatigue_info = {
+                "fatigue_level": hf.fatigue_level,
+                "rest_factor": round(hf.rest_factor, 3),
+                "workload_factor": round(hf.workload_factor, 3),
+                "streak_factor": round(hf.streak_factor, 3),
+                "momentum_state": hf.momentum_state,
+                "combined_modifier": round(hf.combined_modifier, 3),
+            }
+        if enrichment.away_fatigue:
+            af = enrichment.away_fatigue
+            away_fatigue_info = {
+                "fatigue_level": af.fatigue_level,
+                "rest_factor": round(af.rest_factor, 3),
+                "workload_factor": round(af.workload_factor, 3),
+                "streak_factor": round(af.streak_factor, 3),
+                "momentum_state": af.momentum_state,
+                "combined_modifier": round(af.combined_modifier, 3),
+            }
+
+        diag.event("FEATURE", {
+            "branch": "streaks_and_factors",
+            "fatigue_status": fatigue_status,
+            "home_fatigue": home_fatigue_info,
+            "away_fatigue": away_fatigue_info,
+            "players_with_momentum": enrichment.players_with_momentum,
+            "status": fatigue_status,
+        })
 
     def close(self) -> None:
         """Clean up resources."""
