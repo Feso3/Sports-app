@@ -84,6 +84,9 @@ class SimulationConfig(BaseModel):
         }
     )
 
+    # Season context
+    season_phase: str = ""  # e.g. "early_season", "mid_season", "late_season", "playoffs"
+
     # Variance settings
     variance_factor: float = Field(default=0.15, ge=0.0, le=0.5)
     goalie_variance: float = Field(default=0.05, ge=0.0, le=0.2)

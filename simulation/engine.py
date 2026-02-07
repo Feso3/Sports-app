@@ -298,9 +298,11 @@ class GameSimulationEngine:
                 clutch_away = self._get_team_clutch_factor(away_team, players)
 
         # Get fatigue adjustments if enabled
+        # Uses StaminaAnalyzer (per-player) or falls back to player.fatigue_factor
+        # (set by schedule context from DB enrichment)
         fatigue_home = 1.0
         fatigue_away = 1.0
-        if config.use_fatigue_adjustments and self.stamina_analyzer:
+        if config.use_fatigue_adjustments:
             if segment in (GameSegment.LATE_GAME, GameSegment.OVERTIME):
                 fatigue_home = self._get_team_fatigue_factor(home_team, players)
                 fatigue_away = self._get_team_fatigue_factor(away_team, players)
@@ -568,26 +570,43 @@ class GameSimulationEngine:
         team: Team,
         players: dict[int, Player] | None,
     ) -> float:
-        """Calculate team's fatigue impact factor."""
-        if not self.stamina_analyzer or not players:
-            return 1.0
+        """
+        Calculate team's fatigue impact factor.
 
-        total_fatigue = 0.0
-        count = 0
+        Uses StaminaAnalyzer (per-player metrics) when available.
+        Falls back to player.fatigue_factor (set by schedule context
+        from DB enrichment) when StaminaAnalyzer is not provided.
+        """
+        if not players:
+            return 1.0
 
         key_players = team.roster.forwards[:9] + team.roster.defensemen[:6]
 
+        # Strategy 1: Use StaminaAnalyzer for per-player fatigue metrics
+        if self.stamina_analyzer:
+            total_fatigue = 0.0
+            count = 0
+            for player_id in key_players:
+                metrics = self.stamina_analyzer.get_metrics(player_id)
+                if metrics:
+                    total_fatigue += metrics.fatigue_indicator
+                    count += 1
+            if count > 0:
+                return total_fatigue / count
+
+        # Strategy 2: Use player.fatigue_factor from schedule context
+        total_fatigue = 0.0
+        count = 0
         for player_id in key_players:
-            metrics = self.stamina_analyzer.get_metrics(player_id)
-            if metrics:
-                total_fatigue += metrics.fatigue_indicator
+            player = players.get(player_id)
+            if player and player.fatigue_factor != 1.0:
+                total_fatigue += player.fatigue_factor
                 count += 1
 
-        if count == 0:
-            return 1.0
+        if count > 0:
+            return total_fatigue / count
 
-        # Average fatigue indicator (1.0 = no fatigue, <1 = fatigue)
-        return total_fatigue / count
+        return 1.0
 
     def _calculate_confidence_score(
         self,

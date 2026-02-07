@@ -19,6 +19,7 @@ from simulation.models import (
 from src.models.player import Player, PlayerPosition, PlayerStats
 from src.models.team import Team, TeamRoster, TeamStats
 from src.service.data_loader import CacheStatus, DataLoader
+from src.service.db_enrichment import DBEnrichment, EnrichmentSummary
 from src.service.orchestrator import (
     Orchestrator,
     PredictionOptions,
@@ -115,9 +116,33 @@ def mock_data_loader():
 
 
 @pytest.fixture
-def orchestrator(mock_data_loader):
+def mock_db_enrichment():
+    """Create a mock DB enrichment service."""
+    enrichment = MagicMock(spec=DBEnrichment)
+
+    # Mock enrich_all to return a summary with plausible data
+    enrichment.enrich_all.return_value = EnrichmentSummary(
+        season=20252026,
+        season_phase="mid_season",
+        home_team_stats_loaded=True,
+        away_team_stats_loaded=True,
+        home_lines_built=4,
+        away_lines_built=4,
+        home_defense_pairs_built=3,
+        away_defense_pairs_built=3,
+        home_goalie_set=True,
+        away_goalie_set=True,
+        players_enriched=12,
+        players_with_matchup_data=6,
+        players_with_momentum=8,
+    )
+    return enrichment
+
+
+@pytest.fixture
+def orchestrator(mock_data_loader, mock_db_enrichment):
     """Create an Orchestrator with mocked dependencies."""
-    orch = Orchestrator(data_loader=mock_data_loader)
+    orch = Orchestrator(data_loader=mock_data_loader, db_enrichment=mock_db_enrichment)
     yield orch
     orch.close()
 
