@@ -1,0 +1,58 @@
+# Season Phase Definitions
+# -----------------------
+# Defines time-based phases within an NHL season for tracking
+# how player performance evolves across the year.
+#
+# NHL regular season: 82 games per team
+# Typical schedule: October through April
+
+# Phase boundaries (by games played)
+phases:
+  early_season:
+    name: "Early Season"
+    description: "First ~27 games — establishing identity"
+    game_range: [1, 27]
+    approximate_months: ["October", "November"]
+    characteristics:
+      - "Line combinations being tested"
+      - "Players finding rhythm"
+      - "New acquisitions integrating"
+      - "Systems being established"
+      - "Higher variance in performance"
+
+  mid_season:
+    name: "Mid Season"
+    description: "Games 28-55 — the grind"
+    game_range: [28, 55]
+    approximate_months: ["December", "January", "February"]
+    characteristics:
+      - "Roles solidified"
+      - "Fatigue accumulation begins"
+      - "Trade deadline impact"
+      - "Schedule density peaks"
+      - "True talent level emerges"
+
+  late_season:
+    name: "Late Season"
+    description: "Games 56-82 — the push"
+    game_range: [56, 82]
+    approximate_months: ["March", "April"]
+    characteristics:
+      - "Playoff positioning urgency"
+      - "Fatigue at highest levels"
+      - "Lineup changes from deadline deals"
+      - "Motivation varies by standing"
+      - "Rest management for contenders"
+
+# Recency weighting — how much to trust each phase for predictions
+# Later phases weighted heavier because they reflect current form
+recency_weights:
+  early_season: 0.20
+  mid_season: 0.35
+  late_season: 0.45
+
+# Minimum sample sizes for reliable phase stats
+sample_thresholds:
+  minimum_games: 5
+  recommended_games: 15
+  high_confidence_games: 25

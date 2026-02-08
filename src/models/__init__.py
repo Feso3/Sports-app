@@ -14,6 +14,15 @@ from src.models.player import Player, PlayerStats, PlayerPosition
 from src.models.team import Team, LineConfiguration, TeamRoster
 from src.models.game import Game, GameState, GameEvent
 from src.models.segment import Segment, SegmentStats, SegmentPerformance
+from src.models.player_card import (
+    PlayerCard,
+    PerformanceSnapshot,
+    GoaliePerformanceSnapshot,
+    PerformanceTrend,
+    PeriodProfile,
+    SeasonPhase,
+    GamePeriod,
+)
 
 __all__ = [
     "Player",
@@ -28,4 +37,11 @@ __all__ = [
     "Segment",
     "SegmentStats",
     "SegmentPerformance",
+    "PlayerCard",
+    "PerformanceSnapshot",
+    "GoaliePerformanceSnapshot",
+    "PerformanceTrend",
+    "PeriodProfile",
+    "SeasonPhase",
+    "GamePeriod",
 ]

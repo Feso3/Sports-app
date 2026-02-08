@@ -41,6 +41,7 @@ from src.processors.goalie_shot_profile_pipeline import (
     GoalieZoneStats,
     run_pipeline as run_goalie_profile_pipeline,
 )
+from src.processors.player_card_builder import PlayerCardBuilder
 
 __all__ = [
     "ZoneAnalyzer",
@@ -70,4 +71,5 @@ __all__ = [
     "GoalieSegmentStats",
     "GoalieZoneStats",
     "run_goalie_profile_pipeline",
+    "PlayerCardBuilder",
 ]

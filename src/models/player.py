@@ -4,10 +4,15 @@ Player Data Model
 Pydantic models for representing player data, statistics, and performance metrics.
 """
 
+from __future__ import annotations
+
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from src.models.player_card import PlayerCard
 
 
 class PlayerPosition(str, Enum):
@@ -69,13 +74,35 @@ class PlayerStats(BaseModel):
     # Zone-based stats
     zone_stats: dict[str, ZoneStats] = Field(default_factory=dict)
 
-    # Segment-based stats
+    # Segment-based stats (early/mid/late game — cross-period segments)
     early_game_goals: int = 0
     mid_game_goals: int = 0
     late_game_goals: int = 0
     early_game_points: int = 0
     mid_game_points: int = 0
     late_game_points: int = 0
+
+    # Per-period stats (1st / 2nd / 3rd period)
+    period_1_goals: int = 0
+    period_1_assists: int = 0
+    period_1_points: int = 0
+    period_1_shots: int = 0
+    period_1_hits: int = 0
+    period_1_toi_seconds: int = 0
+
+    period_2_goals: int = 0
+    period_2_assists: int = 0
+    period_2_points: int = 0
+    period_2_shots: int = 0
+    period_2_hits: int = 0
+    period_2_toi_seconds: int = 0
+
+    period_3_goals: int = 0
+    period_3_assists: int = 0
+    period_3_points: int = 0
+    period_3_shots: int = 0
+    period_3_hits: int = 0
+    period_3_toi_seconds: int = 0
 
 
 class GoalieStats(BaseModel):
@@ -160,6 +187,10 @@ class Player(BaseModel):
     clutch_rating: float = 0.0
     fatigue_factor: float = 1.0
 
+    # Player card — full dynamic performance profile
+    # Populated by PlayerCardBuilder from game log data
+    player_card: PlayerCard | None = None
+
     class Config:
         """Pydantic configuration."""
 
@@ -205,6 +236,38 @@ class Player(BaseModel):
         elif segment == "late_game":
             return {"goals": stats.late_game_goals, "points": stats.late_game_points}
         return {"goals": 0, "points": 0}
+
+    def get_period_performance(self, period: int) -> dict[str, int]:
+        """Get performance metrics for a specific game period (1, 2, or 3)."""
+        stats = self.career_stats
+        if period == 1:
+            return {
+                "goals": stats.period_1_goals,
+                "assists": stats.period_1_assists,
+                "points": stats.period_1_points,
+                "shots": stats.period_1_shots,
+                "hits": stats.period_1_hits,
+                "toi_seconds": stats.period_1_toi_seconds,
+            }
+        elif period == 2:
+            return {
+                "goals": stats.period_2_goals,
+                "assists": stats.period_2_assists,
+                "points": stats.period_2_points,
+                "shots": stats.period_2_shots,
+                "hits": stats.period_2_hits,
+                "toi_seconds": stats.period_2_toi_seconds,
+            }
+        elif period == 3:
+            return {
+                "goals": stats.period_3_goals,
+                "assists": stats.period_3_assists,
+                "points": stats.period_3_points,
+                "shots": stats.period_3_shots,
+                "hits": stats.period_3_hits,
+                "toi_seconds": stats.period_3_toi_seconds,
+            }
+        return {"goals": 0, "assists": 0, "points": 0, "shots": 0, "hits": 0, "toi_seconds": 0}
 
     def calculate_expected_goals(self, zone: str, shot_type: str = "wrist") -> float:
         """
