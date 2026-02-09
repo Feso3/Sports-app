@@ -1,0 +1,6 @@
+"""Run the player cards web server."""
+
+from src.web.server import run
+
+if __name__ == "__main__":
+    run()
