@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NHL Player Cards</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>Player Cards</h1>
+      <div class="search-bar">
+        <input type="text" id="search" placeholder="Search player name..." autocomplete="off">
+        <div id="search-results" class="search-results" hidden></div>
+      </div>
+      <div class="season-select">
+        <select id="season-select"></select>
+      </div>
+    </header>
+
+    <main>
+      <div id="empty-state" class="empty-state">
+        <p>Search for a player to view their card.</p>
+      </div>
+
+      <div id="loading" class="loading" hidden>
+        <p>Building card...</p>
+      </div>
+
+      <div id="card" class="card" hidden>
+        <!-- Card Header -->
+        <div class="card-header">
+          <div class="player-identity">
+            <h2 id="card-name"></h2>
+            <div class="player-meta">
+              <span id="card-position" class="badge"></span>
+              <span id="card-team" class="badge team-badge"></span>
+              <span id="card-number"></span>
+              <span id="card-shoots"></span>
+              <span id="card-size"></span>
+            </div>
+          </div>
+          <div class="player-score" id="card-score-box">
+            <span class="score-value" id="card-score"></span>
+            <span class="score-label" id="card-score-label"></span>
+          </div>
+        </div>
+
+        <!-- Season Stats -->
+        <div class="card-section">
+          <h3>Season Stats</h3>
+          <div id="season-stats" class="stats-grid"></div>
+        </div>
+
+        <!-- Splits -->
+        <div class="card-section">
+          <div class="split-tabs">
+            <button class="split-tab active" data-tab="period">By Period</button>
+            <button class="split-tab" data-tab="phase">Season Phase</button>
+            <button class="split-tab" data-tab="strength">Strength</button>
+          </div>
+          <div id="split-content" class="split-content"></div>
+        </div>
+
+        <!-- Shot Map -->
+        <div class="card-section">
+          <button id="shot-map-toggle" class="shot-map-btn">Show Shot Map</button>
+          <div id="shot-map-container" class="shot-map-container" hidden>
+            <canvas id="rink-canvas" width="600" height="255"></canvas>
+            <div class="shot-map-legend">
+              <span class="legend-goal"></span> Goal
+              <span class="legend-shot"></span> Shot (no goal)
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
