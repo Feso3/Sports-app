@@ -1,9 +1,7 @@
 """
-NHL Analytics Platform
+NHL Player Cards
 
-A comprehensive analytics platform for NHL player-level analysis,
-heat map generation, synergy detection, and game simulation.
+Data collection and player card generation for NHL analytics.
 """
 
-__version__ = "0.1.0"
-__author__ = "NHL Analytics Team"
+__version__ = "0.2.0"
