@@ -1,17 +1,12 @@
-# Project History (Condensed)
+# Project History
 
 ## Origins
-The project began as a player-first analytics effort focused on zone-based performance and segment-aware trends, with the goal of feeding those insights into a predictive simulation engine.
+Started as a player analytics effort with data collection from the NHL API.
 
-## Milestones to Date
-- **Data foundation**: Established the SQLite schema and collectors for players, game logs, and shot events.
-- **Analytics layer**: Added zone aggregation, segment processing, and matchup tracking.
-- **Synergy & context**: Implemented chemistry signals plus clutch and stamina indicators.
-- **Simulation & workflow**: Delivered a Monte Carlo simulation engine and a local CLI workflow for running predictions end-to-end.
+## v0.1 - Analytics Platform (archived)
+Built out a full analytics/simulation stack including synergy detection, clutch analysis, momentum tracking, Monte Carlo simulation, and a CLI workflow. Concluded that the project went too far too fast without a solid player-facing foundation.
 
-## Current Focus
-- Build a backtesting and calibration harness for historical seasons.
-- Expand multi-season data coverage to strengthen model confidence.
+## v0.2 - Player Cards (current)
+Stripped back to the foundation: collectors, database, and data models. The focus is now on building **player cards** -- per-player, per-game, per-season-phase profiles that surface the collected data in a useful, visual way. Offensive players and goalies first, then defensemen.
 
-*Last updated: 2026-01-30.*
-
+*Last updated: 2026-02-09.*

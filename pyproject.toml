@@ -3,41 +3,31 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nhl-analytics"
-version = "0.1.0"
-description = "NHL Analytics Platform - Player-level analytics, heat maps, synergy detection, and game simulation"
+name = "nhl-player-cards"
+version = "0.2.0"
+description = "NHL Player Cards - Data collection and player profile generation"
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.10"
-authors = [
-    {name = "NHL Analytics Team"}
-]
-keywords = ["nhl", "hockey", "analytics", "sports", "simulation"]
+keywords = ["nhl", "hockey", "analytics", "sports", "player-cards"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 
 dependencies = [
     "requests>=2.31.0",
-    "aiohttp>=3.9.0",
     "httpx>=0.25.0",
-    "pandas>=2.1.0",
-    "numpy>=1.26.0",
-    "scipy>=1.11.0",
     "pydantic>=2.5.0",
     "pyyaml>=6.0.0",
     "python-dotenv>=1.0.0",
     "diskcache>=5.6.0",
     "ratelimit>=2.2.1",
-    "sqlalchemy>=2.0.0",
     "loguru>=0.7.0",
 ]
 
@@ -51,27 +41,10 @@ dev = [
     "isort>=5.12.0",
     "ruff>=0.1.6",
 ]
-viz = [
-    "matplotlib>=3.8.0",
-    "seaborn>=0.13.0",
-]
-notebook = [
-    "jupyter>=1.0.0",
-    "ipykernel>=6.27.0",
-]
-all = [
-    "nhl-analytics[dev,viz,notebook]",
-]
-
-[project.urls]
-Homepage = "https://github.com/example/nhl-analytics"
-Documentation = "https://github.com/example/nhl-analytics#readme"
-Repository = "https://github.com/example/nhl-analytics.git"
-Issues = "https://github.com/example/nhl-analytics/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "simulation*"]
+include = ["src*"]
 
 [tool.black]
 line-length = 100
@@ -81,14 +54,9 @@ exclude = '''
 /(
     \.eggs
   | \.git
-  | \.hg
   | \.mypy_cache
-  | \.tox
   | \.venv
   | _build
-  | buck-out
-  | build
-  | dist
   | data
 )/
 '''
@@ -134,7 +102,6 @@ disallow_untyped_defs = true
 ignore_missing_imports = true
 exclude = [
     "data/",
-    "notebooks/",
 ]
 
 [tool.pytest.ini_options]
@@ -142,11 +109,11 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=src --cov=simulation --cov-report=term-missing"
+addopts = "-v --cov=src --cov-report=term-missing"
 asyncio_mode = "auto"
 
 [tool.coverage.run]
-source = ["src", "simulation"]
+source = ["src"]
 omit = ["tests/*", "*/__pycache__/*"]
 
 [tool.coverage.report]
