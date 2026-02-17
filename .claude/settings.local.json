@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(gh pr create --title \"Add performance range: best and worst single-game stats\" --body \"$\\(cat <<''EOF''\n## Summary\n\n- Adds a **Performance Range** section to each player card, showing their best and worst individual game of the season side by side\n- Skaters: ranked by points \\(tiebreak: goals, then TOI\\); displays G/A/P/+\\\\-/SOG/TOI per game\n- Goalies: ranked by SV% among started games with ≥10 shots faced; displays SV%/SV/SA/GA/Result\n- Each game shows opponent context \\(date · vs/@ TEAM\\) in green \\(best\\) and red \\(worst\\) labels\n- Section auto-hides for players with no qualifying data \\(no games, goalie relief-only\\)\n\n## Test plan\n\n- [ ] Start the web server and search for a high-volume skater — confirm Performance Range appears between Season Stats and Splits with a plausible best/worst game\n- [ ] Search for a goalie — verify best/worst shows SV% games with W/L/OTL result\n- [ ] Search for a player with very few games — section should still render correctly\n- [ ] Confirm section is hidden for a relief-only goalie \\(if one exists in the DB\\)\n- [ ] No console errors in browser\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\nEOF\n\\)\")"
+    ]
+  }
+}
