@@ -321,3 +321,38 @@ header h1 {
 
 .legend-goal { background: #34d399; }
 .legend-shot { background: #3b82f6; opacity: 0.5; }
+
+/* Performance Range */
+.range-grid {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  gap: 0 16px;
+  align-items: start;
+}
+
+.range-divider {
+  background: #1e2a3a;
+  align-self: stretch;
+}
+
+.range-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.range-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.range-label-best  { color: #34d399; }
+.range-label-worst { color: #f87171; }
+
+.range-context {
+  font-size: 12px;
+  color: #5a6a7a;
+  margin-bottom: 2px;
+}

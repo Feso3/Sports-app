@@ -5,6 +5,7 @@ from typing import Any, Optional
 from src.database.db import Database, get_database
 
 from .models import (
+    GoalieGameHigh,
     GoaliePeriodSplit,
     GoaliePhaseSplit,
     GoalieStats,
@@ -12,6 +13,7 @@ from .models import (
     PeriodSplit,
     PhaseSplit,
     PlayerCard,
+    SkaterGameHigh,
     ShotEvent,
     SkaterStats,
     StrengthSplit,
@@ -207,6 +209,84 @@ def _build_goalie_stats(rows: list[dict[str, Any]]) -> GoalieStats:
         toi_seconds=toi,
         avg_toi_minutes=round(toi / gp / 60, 1) if gp else 0.0,
     )
+
+
+# ---------------------------------------------------------------------------
+# Performance range (best / worst single game)
+# ---------------------------------------------------------------------------
+
+_MIN_GOALIE_SHOTS = 10  # minimum shots faced for a game to count
+
+
+def _get_skater_performance_range(
+    rows: list[dict[str, Any]],
+) -> tuple["SkaterGameHigh | None", "SkaterGameHigh | None"]:
+    """Return (best_game, worst_game) for a skater based on season game rows."""
+    if not rows:
+        return None, None
+
+    def sort_key(r: dict[str, Any]) -> tuple:
+        return (r.get("points") or 0, r.get("goals") or 0, r.get("toi_seconds") or 0)
+
+    def make(r: dict[str, Any]) -> SkaterGameHigh:
+        toi = r.get("toi_seconds") or 0
+        return SkaterGameHigh(
+            game_date=r.get("game_date") or "",
+            opponent=r.get("opponent_abbrev") or "",
+            is_home=bool(r.get("is_home")),
+            goals=r.get("goals") or 0,
+            assists=r.get("assists") or 0,
+            points=r.get("points") or 0,
+            plus_minus=r.get("plus_minus") or 0,
+            shots=r.get("shots") or 0,
+            toi_seconds=toi,
+            toi_minutes=round(toi / 60, 1),
+        )
+
+    return make(max(rows, key=sort_key)), make(min(rows, key=sort_key))
+
+
+def _get_goalie_performance_range(
+    rows: list[dict[str, Any]],
+) -> tuple["GoalieGameHigh | None", "GoalieGameHigh | None"]:
+    """Return (best_game, worst_game) for a goalie based on started games only."""
+    started = [
+        r for r in rows
+        if r.get("games_started") and (r.get("shots_against") or 0) >= _MIN_GOALIE_SHOTS
+    ]
+    if not started:
+        return None, None
+
+    def sort_key(r: dict[str, Any]) -> tuple:
+        sv_pct = r.get("save_percentage") or 0.0
+        return (sv_pct, -(r.get("goals_against") or 0))
+
+    def result_str(r: dict[str, Any]) -> str:
+        if r.get("wins"):
+            return "W"
+        if r.get("ot_losses"):
+            return "OTL"
+        if r.get("losses"):
+            return "L"
+        return ""
+
+    def make(r: dict[str, Any]) -> GoalieGameHigh:
+        saves = r.get("saves") or 0
+        sa = r.get("shots_against") or 0
+        raw_sv = r.get("save_percentage")
+        sv_pct = raw_sv if raw_sv is not None else (round(saves / sa, 4) if sa else 0.0)
+        return GoalieGameHigh(
+            game_date=r.get("game_date") or "",
+            opponent=r.get("opponent_abbrev") or "",
+            is_home=bool(r.get("is_home")),
+            saves=saves,
+            shots_against=sa,
+            goals_against=r.get("goals_against") or 0,
+            save_pct=sv_pct,
+            result=result_str(r),
+        )
+
+    return make(max(started, key=sort_key)), make(min(started, key=sort_key))
 
 
 # ---------------------------------------------------------------------------
@@ -526,7 +606,8 @@ def build_card(
     with db.cursor() as cur:
         cur.execute(
             """
-            SELECT pgs.* FROM player_game_stats pgs
+            SELECT pgs.*, g.game_date
+            FROM player_game_stats pgs
             JOIN games g ON pgs.game_id = g.game_id
             WHERE pgs.player_id = ? AND g.season = ?
             ORDER BY g.game_date
@@ -539,6 +620,7 @@ def build_card(
     if is_goalie:
         goalie_stats = _build_goalie_stats(game_rows)
         league_goalie_avg = get_league_goalie_avg(season, db)
+        best_game, worst_game = _get_goalie_performance_range(game_rows)
 
         # Score: save_pct delta (in percentage points)
         delta = (goalie_stats.save_pct - league_goalie_avg.save_pct) * 100
@@ -563,6 +645,8 @@ def build_card(
             league_goalie_avg=league_goalie_avg,
             player_score=score,
             score_label=score_label,
+            best_game=best_game,
+            worst_game=worst_game,
             period_splits=_get_goalie_period_splits(player_id, season, db),
             season_phase_splits=_get_goalie_phase_splits(player_id, season, db),
             strength_splits=_get_goalie_strength_splits(player_id, season, db),
@@ -571,6 +655,7 @@ def build_card(
     else:
         skater_stats = _build_skater_stats(game_rows)
         league_skater_avg = get_league_skater_avg(season, db)
+        best_game, worst_game = _get_skater_performance_range(game_rows)
 
         # Score: points_per_60 delta
         delta = skater_stats.points_per_60 - league_skater_avg.points_per_60
@@ -595,6 +680,8 @@ def build_card(
             league_skater_avg=league_skater_avg,
             player_score=score,
             score_label=score_label,
+            best_game=best_game,
+            worst_game=worst_game,
             period_splits=_get_skater_period_splits(player_id, season, db),
             season_phase_splits=_get_skater_phase_splits(player_id, season, db),
             strength_splits=_get_skater_strength_splits(player_id, season, db),

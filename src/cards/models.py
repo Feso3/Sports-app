@@ -124,6 +124,34 @@ class GoalieStrengthSplit(BaseModel):
     save_pct: float = 0.0
 
 
+class SkaterGameHigh(BaseModel):
+    """Best or worst single-game performance for a skater."""
+
+    game_date: str = ""
+    opponent: str = ""
+    is_home: bool = False
+    goals: int = 0
+    assists: int = 0
+    points: int = 0
+    plus_minus: int = 0
+    shots: int = 0
+    toi_seconds: int = 0
+    toi_minutes: float = 0.0
+
+
+class GoalieGameHigh(BaseModel):
+    """Best or worst single-game performance for a goalie (starts only)."""
+
+    game_date: str = ""
+    opponent: str = ""
+    is_home: bool = False
+    saves: int = 0
+    shots_against: int = 0
+    goals_against: int = 0
+    save_pct: float = 0.0
+    result: str = ""  # "W", "L", "OTL"
+
+
 class PlayerCard(BaseModel):
     """The player card -- the soul of the player."""
 
@@ -155,6 +183,10 @@ class PlayerCard(BaseModel):
     # Goalies: (save_pct - league_avg_save_pct) * 100
     player_score: float = 0.0
     score_label: str = ""  # e.g. "+2.1 P/60" or "+1.5 SV%"
+
+    # Performance range: best and worst single-game
+    best_game: SkaterGameHigh | GoalieGameHigh | None = None
+    worst_game: SkaterGameHigh | GoalieGameHigh | None = None
 
     # Splits
     period_splits: list[PeriodSplit | GoaliePeriodSplit] = Field(default_factory=list)

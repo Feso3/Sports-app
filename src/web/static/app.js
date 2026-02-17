@@ -130,6 +130,9 @@ function renderCard(card) {
   // Season stats
   renderSeasonStats(card);
 
+  // Performance range
+  renderPerformanceRange(card);
+
   // Splits (render the active tab)
   renderActiveSplit(card);
 
@@ -165,6 +168,75 @@ function statCells(pairs) {
   return pairs.map(([label, val]) =>
     `<div class="stat-cell"><span class="stat-value">${val}</span><span class="stat-label">${label}</span></div>`
   ).join("");
+}
+
+// ── Performance Range ────────────────────────────────────────────────────────
+
+function renderPerformanceRange(card) {
+  const section = document.getElementById("performance-range-section");
+  const container = document.getElementById("performance-range");
+
+  if (!card.best_game || !card.worst_game) {
+    section.hidden = true;
+    return;
+  }
+  section.hidden = false;
+
+  const best = card.best_game;
+  const worst = card.worst_game;
+
+  function fmtDate(dateStr) {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr + "T12:00:00");
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  function fmtContext(g) {
+    const loc = g.is_home ? "vs" : "@";
+    const opp = g.opponent || "?";
+    return `${fmtDate(g.game_date)} · ${loc} ${opp}`;
+  }
+
+  const cells = card.is_goalie ? goalieRangeCells : skaterRangeCells;
+
+  container.innerHTML = `
+    <div class="range-grid">
+      <div class="range-col">
+        <div class="range-label range-label-best">Best Game</div>
+        <div class="range-context">${fmtContext(best)}</div>
+        <div class="stats-grid">${cells(best)}</div>
+      </div>
+      <div class="range-divider"></div>
+      <div class="range-col">
+        <div class="range-label range-label-worst">Worst Game</div>
+        <div class="range-context">${fmtContext(worst)}</div>
+        <div class="stats-grid">${cells(worst)}</div>
+      </div>
+    </div>
+  `;
+}
+
+function skaterRangeCells(g) {
+  const pm = g.plus_minus >= 0 ? `+${g.plus_minus}` : `${g.plus_minus}`;
+  return statCells([
+    ["G", g.goals],
+    ["A", g.assists],
+    ["P", g.points],
+    ["+/-", pm],
+    ["SOG", g.shots],
+    ["TOI", Math.round(g.toi_minutes) + "m"],
+  ]);
+}
+
+function goalieRangeCells(g) {
+  const svPct = (g.save_pct * 100).toFixed(1) + "%";
+  return statCells([
+    ["SV%", svPct],
+    ["SV", g.saves],
+    ["SA", g.shots_against],
+    ["GA", g.goals_against],
+    ["Result", g.result || "—"],
+  ]);
 }
 
 // ── Splits ──────────────────────────────────────────────────────────────────
