@@ -13,17 +13,17 @@ api:
   legacy_base_url: "https://statsapi.web.nhl.com/api/v1"
 
   # Request timeout in seconds
-  timeout: 30
+  timeout: 60
 
   # Rate limiting configuration
   rate_limit:
     # Maximum requests per minute
-    requests_per_minute: 60
+    requests_per_minute: 30
     # Delay between requests (seconds)
-    request_delay: 0.5
+    request_delay: 2
     # Retry configuration
-    max_retries: 3
-    retry_delay: 2.0
+    max_retries: 1
+    retry_delay: 1.0
     retry_backoff: 2.0  # Exponential backoff multiplier
 
 # API Endpoints
